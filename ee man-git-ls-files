@@ -1,0 +1,350 @@
+[1mdiff --cc README.md[m
+[1mindex 33f2608,d4e39b7..0000000[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@@ -1,4 -1,4 +1,8 @@@[m
+[32m++<<<<<<< HEAD[m
+[32m +![Twitch Channel Points Miner - v2](./assets/banner.png)[m
+[32m++=======[m
+[32m+ ![Twitch Channel Points Miner - v2](https://raw.githubusercontent.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/master/assets/banner.png)[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  <p align="center">[m
+  <a href="https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Tkd-Alex/Twitch-Channel-Points-Miner-v2"></a>[m
+  <a href="https://www.python.org/downloads/release/python-360/"><img alt="Python3" src="https://img.shields.io/badge/built%20for-Python≥3.6-red.svg?style=flat"></a>[m
+[36m@@@ -58,7 -58,7 +62,11 @@@[m [mIf you want to offer me a coffee, I wou[m
+  [m
+  <a href="https://www.buymeacoffee.com/tkdalex" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/lato-yellow.png" alt="Buy Me A Coffee" height="41" width="174"></a>[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m +If you have any issues or you want to contribute, you are welcome! But please before read the [CONTRIBUTING.md](/CONTRIBUTING.md)[m
+[32m++=======[m
+[32m+ If you have any issues or you want to contribute, you are welcome! But please before read the [CONTRIBUTING.md](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/blob/master/CONTRIBUTING.md) file.[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  [m
+  ## Main differences from the original repository:[m
+  [m
+[36m@@@ -171,15 -171,23 +179,32 @@@[m [mNo browser needed. [#41](https://github[m
+  ```[m
+  [m
+  ## How to use:[m
+[32m++<<<<<<< HEAD[m
+[32m +1. Clone this repository `git clone https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2`[m
+[32m +2. Install all the requirements `pip install -r requirements.txt` . If you have problems with requirements, make sure to have at least Python3.6. You could also try to create a virtualenv and then install all the requirements[m
+[32m++=======[m
+[32m+ ### Download via pip[m
+[32m+ Via pip you can download the stable version of the project.[m
+[32m+ [m
+[32m+ `pip install Twitch-Channel-Points-Miner-v2`[m
+[32m+ [m
+[32m+ ### Download via Github[m
+[32m+ Via GitHub you can download the latest version of the project.[m
+[32m+ 1. Clone this repository `git clone https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2`[m
+[32m+ 2. Install all the requirements `pip install -r requirements.txt` . If you have problems with requirements, make sure to have at least Python3.6. You could also try to create a _virtualenv_ and then install all the requirements[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  ```sh[m
+  pip install virtualenv[m
+  virtualenv -p python3 venv[m
+  source venv/bin/activate[m
+  pip install -r requirements.txt[m
+  ```[m
+[32m++<<<<<<< HEAD[m
+[32m +3. Create your `run.py` file start from [example.py](/example.py)[m
+[32m++=======[m
+[32m+ [m
+[32m+ Then create your `run.py` file start from [example.py](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/blob/master/example.py).[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  ```python[m
+  # -*- coding: utf-8 -*-[m
+  [m
+[36m@@@ -276,7 -284,7 +301,11 @@@[m [mfrom TwitchChannelPointsMiner import Tw[m
+  twitch_miner = TwitchChannelPointsMiner("your-twitch-username")[m
+  twitch_miner.mine(followers=True, blacklist=["user1", "user2"])  # Blacklist example[m
+  ```[m
+[32m++<<<<<<< HEAD[m
+[32m +4. Start mining! `python run.py`[m
+[32m++=======[m
+[32m+ Start mining! `python run.py` 🥳[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  [m
+  ### Limits[m
+  > Twitch has a limit - you can't watch more than two channels at one time. We take the first two streamers from the list as they have the highest priority.[m
+[36m@@@ -371,7 -379,7 +400,11 @@@[m [mColorPalette[m
+  - **PERCENTAGE**: Select the option with the highest percentage based on odds (It's the same that show Twitch) - Should be the same as select LOWEST_ODDS[m
+  - **SMART**: If the majority in percent chose an option, then follow the other users, otherwise select the option with the highest odds[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m +![Screenshot](./assets/prediction.png)[m
+[32m++=======[m
+[32m+ ![Screenshot](https://raw.githubusercontent.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/master/assets/prediction.png)[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  [m
+  Here a concrete example:[m
+  [m
+[36m@@@ -428,7 -436,7 +461,11 @@@[m [mIf you want you can toggle the dark the[m
+  [m
+  | Light theme | Dark theme |[m
+  | ----------- | ---------- |[m
+[32m++<<<<<<< HEAD[m
+[32m +| ![Light theme](./assets/chart-analytics-light.png) | ![Dark theme](./assets/chart-analytics-dark.png) |[m
+[32m++=======[m
+[32m+ | ![Light theme](https://raw.githubusercontent.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/master/assets/chart-analytics-light.png) | ![Dark theme](https://raw.githubusercontent.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/master/assets/chart-analytics-dark.png) |[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  [m
+  For use this feature just call the `analytics` method before start mining. Read more at: [#96](https://github.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/issues/96)[m
+  The chart will be autofreshed each `refresh` minutes. If you want to connect from one to second machine that have that webpanel you have to use `0.0.0.0` instead of `127.0.0.1`.[m
+[1mdiff --cc TwitchChannelPointsMiner/TwitchChannelPointsMiner.py[m
+[1mindex c709e1c,fb32852..0000000[m
+[1m--- a/TwitchChannelPointsMiner/TwitchChannelPointsMiner.py[m
+[1m+++ b/TwitchChannelPointsMiner/TwitchChannelPointsMiner.py[m
+[36m@@@ -26,6 -26,7 +26,10 @@@[m [mfrom TwitchChannelPointsMiner.logger im[m
+  from TwitchChannelPointsMiner.utils import ([m
+      _millify,[m
+      at_least_one_value_in_settings_is,[m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+     check_versions,[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+      get_user_agent,[m
+      internet_connection_available,[m
+      set_default_settings,[m
+[36m@@@ -109,6 -110,16 +113,19 @@@[m [mclass TwitchChannelPointsMiner[m
+  [m
+          self.logs_file = configure_loggers(self.username, logger_settings)[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+         # Check for the latest version of the script[m
+[32m+         current_version, github_version = check_versions()[m
+[32m+         if github_version == "0.0.0":[m
+[32m+             logger.error([m
+[32m+                 "Unable to detect if you have the latest version of this script"[m
+[32m+             )[m
+[32m+         elif current_version != github_version:[m
+[32m+             logger.info(f"You are running the version {current_version} of this script")[m
+[32m+             logger.info(f"The latest version on GitHub is: {github_version}")[m
+[32m+ [m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+          for sign in [signal.SIGINT, signal.SIGSEGV, signal.SIGTERM]:[m
+              signal.signal(sign, self.end)[m
+  [m
+[36m@@@ -166,7 -177,7 +183,11 @@@[m
+              )[m
+              for username in streamers_name:[m
+                  if username in streamers_name:[m
+[32m++<<<<<<< HEAD[m
+[32m +                    time.sleep(random.uniform(0.3, 0.5))[m
+[32m++=======[m
+[32m+                     time.sleep(random.uniform(0.3, 0.7))[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+                      try:[m
+                          streamer = ([m
+                              streamers_dict[username][m
+[36m@@@ -198,7 -209,7 +219,11 @@@[m
+              # 2. Check if streamers are online[m
+              # 3. DEACTIVATED: Check if the user is a moderator. (was used before the 5th of April 2021 to deactivate predictions)[m
+              for streamer in self.streamers:[m
+[32m++<<<<<<< HEAD[m
+[32m +                time.sleep(random.uniform(0.3, 0.5))[m
+[32m++=======[m
+[32m+                 time.sleep(random.uniform(0.3, 0.7))[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+                  self.twitch.load_channel_points_context(streamer)[m
+                  self.twitch.check_streamer_online(streamer)[m
+                  # self.twitch.viewer_is_mod(streamer)[m
+[1mdiff --cc TwitchChannelPointsMiner/__init__.py[m
+[1mindex f581ca0,cf775fa..0000000[m
+[1m--- a/TwitchChannelPointsMiner/__init__.py[m
+[1m+++ b/TwitchChannelPointsMiner/__init__.py[m
+[36m@@@ -1,5 -1,5 +1,9 @@@[m
+  # -*- coding: utf-8 -*-[m
+[32m++<<<<<<< HEAD[m
+[32m +__version__ = "2.7.2"[m
+[32m++=======[m
+[32m+ __version__ = "2.0.5"[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  from .TwitchChannelPointsMiner import TwitchChannelPointsMiner[m
+  [m
+  __all__ = [[m
+[1mdiff --cc TwitchChannelPointsMiner/classes/AnalyticsServer.py[m
+[1mindex 0a5c0a1,3daa843..0000000[m
+[1m--- a/TwitchChannelPointsMiner/classes/AnalyticsServer.py[m
+[1m+++ b/TwitchChannelPointsMiner/classes/AnalyticsServer.py[m
+[36m@@@ -6,6 -6,7 +6,10 @@@[m [mfrom threading import Threa[m
+  from flask import Flask, Response, cli, render_template[m
+  [m
+  from TwitchChannelPointsMiner.classes.Settings import Settings[m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+ from TwitchChannelPointsMiner.utils import download_file[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  [m
+  cli.show_server_banner = lambda *_: None[m
+  logger = logging.getLogger(__name__)[m
+[36m@@@ -38,10 -39,39 +42,45 @@@[m [mdef index(refresh=5)[m
+      )[m
+  [m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+ def download_assets(assets_folder, required_files):[m
+[32m+     Path(assets_folder).mkdir(parents=True, exist_ok=True)[m
+[32m+     logger.info(f"Downloading assets to {assets_folder}")[m
+[32m+ [m
+[32m+     for f in required_files:[m
+[32m+         if os.path.isfile(os.path.join(assets_folder, f)) is False:[m
+[32m+             if ([m
+[32m+                 download_file(os.path.join("assets", f), os.path.join(assets_folder, f))[m
+[32m+                 is True[m
+[32m+             ):[m
+[32m+                 logger.info(f"Downloaded {f}")[m
+[32m+ [m
+[32m+ [m
+[32m+ def check_assets():[m
+[32m+     required_files = ["banner.png", "charts.html", "dark-theme.css"][m
+[32m+     assets_folder = os.path.join(Path().absolute(), "assets")[m
+[32m+     if os.path.isdir(assets_folder) is False:[m
+[32m+         logger.info(f"Assets folder not found at {assets_folder}")[m
+[32m+         download_assets(assets_folder, required_files)[m
+[32m+     else:[m
+[32m+         for f in required_files:[m
+[32m+             if os.path.isfile(os.path.join(assets_folder, f)) is False:[m
+[32m+                 logger.info(f"Missing file {f} in {assets_folder}")[m
+[32m+                 download_assets(assets_folder, required_files)[m
+[32m+                 break[m
+[32m+ [m
+[32m+ [m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  class AnalyticsServer(Thread):[m
+      def __init__(self, host: str = "127.0.0.1", port: int = 5000, refresh: int = 5):[m
+          super(AnalyticsServer, self).__init__()[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+         check_assets()[m
+[32m+ [m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+          self.host = host[m
+          self.port = port[m
+          self.refresh = refresh[m
+[1mdiff --cc TwitchChannelPointsMiner/classes/Twitch.py[m
+[1mindex c80ca72,9dc0ac9..0000000[m
+[1m--- a/TwitchChannelPointsMiner/classes/Twitch.py[m
+[1m+++ b/TwitchChannelPointsMiner/classes/Twitch.py[m
+[36m@@@ -396,7 -396,7 +396,11 @@@[m [mclass Twitch(object)[m
+                  self.claim_bonus(streamer, community_points["availableClaim"]["id"])[m
+  [m
+      def make_predictions(self, event):[m
+[32m++<<<<<<< HEAD[m
+[32m +        decision = event.bet.calculate(event.streamer.channel_points, event.title)[m
+[32m++=======[m
+[32m+         decision = event.bet.calculate(event.streamer.channel_points)[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+          selector_index = 0 if decision["choice"] == "A" else 1[m
+  [m
+          logger.info([m
+[1mdiff --cc TwitchChannelPointsMiner/classes/entities/Bet.py[m
+[1mindex 7926720,9b70aeb..0000000[m
+[1m--- a/TwitchChannelPointsMiner/classes/entities/Bet.py[m
+[1m+++ b/TwitchChannelPointsMiner/classes/entities/Bet.py[m
+[1mdiff --cc TwitchChannelPointsMiner/constants.py[m
+[1mindex 5189f4a,96a8d99..0000000[m
+[1m--- a/TwitchChannelPointsMiner/constants.py[m
+[1m+++ b/TwitchChannelPointsMiner/constants.py[m
+[36m@@@ -17,6 -17,12 +17,15 @@@[m [mUSER_AGENTS = [m
+      },[m
+  }[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+ BRANCH = "master"[m
+[32m+ GITHUB_url = ([m
+[32m+     "https://raw.githubusercontent.com/Tkd-Alex/Twitch-Channel-Points-Miner-v2/"[m
+[32m+     + BRANCH[m
+[32m+ )[m
+[32m+ [m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  [m
+  class GQLOperations:[m
+      url = "https://gql.twitch.tv/gql"[m
+[1mdiff --cc TwitchChannelPointsMiner/utils.py[m
+[1mindex ceaef57,7f6dbda..0000000[m
+[1m--- a/TwitchChannelPointsMiner/utils.py[m
+[1m+++ b/TwitchChannelPointsMiner/utils.py[m
+[36m@@@ -4,11 -4,13 +4,21 @@@[m [mimport socke[m
+  import time[m
+  from copy import deepcopy[m
+  from datetime import datetime, timezone[m
+[32m++<<<<<<< HEAD[m
+[32m +from random import randrange[m
+[32m +[m
+[32m +from millify import millify[m
+[32m +[m
+[32m +from TwitchChannelPointsMiner.constants import USER_AGENTS[m
+[32m++=======[m
+[32m+ from os import path[m
+[32m+ from random import randrange[m
+[32m+ [m
+[32m+ import requests[m
+[32m+ from millify import millify[m
+[32m+ [m
+[32m+ from TwitchChannelPointsMiner.constants import USER_AGENTS, GITHUB_url[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+  [m
+  [m
+  def _millify(input, precision=2):[m
+[36m@@@ -154,3 -156,46 +164,49 @@@[m [mdef percentage(a, b)[m
+  [m
+  def create_chunks(lst, n):[m
+      return [lst[i : (i + n)] for i in range(0, len(lst), n)]  # noqa: E203[m
+[32m++<<<<<<< HEAD[m
+[32m++=======[m
+[32m+ [m
+[32m+ [m
+[32m+ def download_file(name, fpath):[m
+[32m+     r = requests.get([m
+[32m+         path.join(GITHUB_url, name),[m
+[32m+         headers={"User-Anget": get_user_agent("FIREFOX")},[m
+[32m+         stream=True,[m
+[32m+     )[m
+[32m+     if r.status_code == 200:[m
+[32m+         with open(fpath, "wb") as f:[m
+[32m+             for chunk in r.iter_content(chunk_size=1024):[m
+[32m+                 if chunk:[m
+[32m+                     f.write(chunk)[m
+[32m+     return True[m
+[32m+ [m
+[32m+ [m
+[32m+ def read(fname):[m
+[32m+     return open(path.join(path.dirname(__file__), fname), encoding="utf-8").read()[m
+[32m+ [m
+[32m+ [m
+[32m+ def init2dict(content):[m
+[32m+     return dict(re.findall(r"""__([a-z]+)__ = "([^"]+)""", content))[m
+[32m+ [m
+[32m+ [m
+[32m+ def check_versions():[m
+[32m+     try:[m
+[32m+         current_version = init2dict(read("__init__.py"))[m
+[32m+         current_version = ([m
+[32m+             current_version["version"] if "version" in current_version else "0.0.0"[m
+[32m+         )[m
+[32m+     except Exception:[m
+[32m+         current_version = "0.0.0"[m
+[32m+     try:[m
+[32m+         r = requests.get([m
+[32m+             path.join(GITHUB_url, "TwitchChannelPointsMiner", "__init__.py")[m
+[32m+         )[m
+[32m+         github_version = init2dict(r.text)[m
+[32m+         github_version = ([m
+[32m+             github_version["version"] if "version" in github_version else "0.0.0"[m
+[32m+         )[m
+[32m+     except Exception:[m
+[32m+         github_version = "0.0.0"[m
+[32m+     return current_version, github_version[m
+[32m++>>>>>>> 5efbed68dc94fb7da9c2a0fab6c2b61f4d6e0970[m
+[1mdiff --cc setup.py[m
+[1mindex c9d80da,840cc83..0000000[m
+[1m--- a/setup.py[m
+[1m+++ b/setup.py[m
+[36m@@@ -25,12 -25,22 +25,31 @@@[m [msetuptools.setup[m
+      url="https://github.com/Tkd-Alex/Twitch-Ch

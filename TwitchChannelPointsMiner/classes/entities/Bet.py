@@ -279,9 +279,7 @@ class Bet(object):
                 else self.__return_choice(OutcomeKeys.TOTAL_USERS)
             )
         elif self.settings.strategy == Strategy.ARTIFACT:
-
             to_odds = lambda percent: (1 - percent) / percent
-
             def event_chance(event_odds: float, odds_label: str = "", percentage_label = "") -> None:
                 odd_diff = event_odds / 2  # Odd difference from event odds for normal multiplier, Double this for 2x multiplier (Max)
                 odds, label = max((self.outcomes[0][OutcomeKeys.ODDS], self.outcomes[0]['title']),
