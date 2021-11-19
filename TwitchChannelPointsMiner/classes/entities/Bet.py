@@ -279,7 +279,7 @@ class Bet(object):
                 else self.__return_choice(OutcomeKeys.TOTAL_USERS)
             )
         elif self.settings.strategy == Strategy.ARTIFACT:
-            to_odds = lambda percent: (1 - percent) / percent
+            percent_to_odds = lambda percent: (1 - percent) / percent
             def event_chance(event_odds: float, odds_label: str = "", percentage_label = "") -> None:
                 odd_diff = event_odds / 2  # Odd difference from event odds for normal multiplier, Double this for 2x multiplier (Max)
                 odds, label = max((self.outcomes[0][OutcomeKeys.ODDS], self.outcomes[0]['title']),
@@ -297,8 +297,8 @@ class Bet(object):
                     multiplier *= 1 - 1 / event_odds
                 self.decision["amount"] = int(balance * (self.settings.percentage_artifact * multiplier / 100))
 
-            if "artifact" in title.lower(): event_chance(to_odds(0.06), 'y', 'n')
-            elif "fortune" in title.lower(): event_chance(to_odds(0.1875), 'mis', 'fortune') 
+            if "artifact" in title.lower(): event_chance(percent_to_odds(0.09), 'y', 'n')
+            elif "fortune" in title.lower(): event_chance(percent_to_odds(0.1875), 'mis', 'fortune') 
             else: self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
 
         if self.decision["choice"] is not None:
