@@ -15,7 +15,7 @@ class Strategy(Enum):
     HIGH_ODDS = auto()
     PERCENTAGE = auto()
     SMART = auto()
-    ARTIFACT = auto()
+    GENSHIN = auto()
 
     def __str__(self):
         return self.name
@@ -111,7 +111,9 @@ class BetSettings(object):
     def default(self):
         self.strategy = self.strategy if not None else Strategy.SMART
         self.percentage = self.percentage if not None else 5
-        self.percentage_artifact = self.percentage_artifact if not None else self.percentage
+        self.percentage_artifact = (
+            self.percentage_artifact if not None else self.percentage
+        )
         self.percentage_gap = self.percentage_gap if not None else 20
         self.max_points = self.max_points if not None else 50000
         self.minimum_points = self.minimum_points if not None else 0
@@ -278,34 +280,59 @@ class Bet(object):
                 if difference < self.settings.percentage_gap
                 else self.__return_choice(OutcomeKeys.TOTAL_USERS)
             )
-        elif self.settings.strategy == Strategy.ARTIFACT:
-            percent_to_odds = lambda percent: (1 - percent) / percent
-            def event_chance(event_odds: float, odds_label: str = "", percentage_label = "") -> None:
-                odd_diff = event_odds / 2  # Odd difference from event odds for normal multiplier, Double this for 2x multiplier (Max)
-                odds, label = max((self.outcomes[0][OutcomeKeys.ODDS], self.outcomes[0]['title']),
-                    (self.outcomes[1][OutcomeKeys.ODDS], self.outcomes[1]['title']))
-                multiplier = 1 + min(abs(odds - event_odds) / odd_diff - 1, 1)
+        elif self.settings.strategy == Strategy.GENSHIN:
+
+            def event_chance(
+                event_odds: float,
+                multiplier_scaling: float = None,
+                odds_label: str = "",
+                percentage_label = "",
+            ) -> None:
+                # multiplier_scaling: Odd difference from event / multiplier scaling = multiplier (Max 2x)
+                if multiplier_scaling is None:
+                    multiplier_scaling = event_odds
+                odds, label = max(
+                    (self.outcomes[0][OutcomeKeys.ODDS], self.outcomes[0]["title"]),
+                    (self.outcomes[1][OutcomeKeys.ODDS], self.outcomes[1]["title"]),
+                )
+                multiplier = 1 + min(abs(odds - event_odds) / multiplier_scaling - 1, 1)
                 if odds > event_odds:
                     if odds_label not in label.lower():
-                        logger.warning(f"Event odds label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}")
+                        logger.warning(
+                            f"Event odds label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
+                        )
                     self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
                     multiplier /= event_odds
                 else:
                     if percentage_label not in label.lower():
-                        logger.warning(f"Event percentage label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}")
-                    self.decision["choice"] =  self.__return_choice(OutcomeKeys.ODDS_PERCENTAGE)
+                        logger.warning(
+                            f"Event percentage label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
+                        )
+                    self.decision["choice"] = self.__return_choice(
+                        OutcomeKeys.ODDS_PERCENTAGE
+                    )
                     multiplier *= 1 - 1 / event_odds
-                self.decision["amount"] = int(balance * (self.settings.percentage_artifact * multiplier / 100))
+                self.decision["amount"] = int(
+                    balance * (self.settings.percentage_artifact * multiplier / 100)
+                )
 
-            if "artifact" in title.lower(): event_chance(percent_to_odds(0.09), 'y', 'n')
-            elif "fortune" in title.lower(): event_chance(percent_to_odds(0.1875), 'mis', 'fortune') 
-            else: self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
+            percent_to_odds = lambda percent: (1 - percent / 100) / (percent / 100) + 1
+            if "good" in title.lower() and "artifact" in title.lower():
+                event_chance(percent_to_odds(8), odds_label="y", percentage_label="n")
+            elif "fortune" in title.lower():
+                event_chance(
+                    percent_to_odds(18.75), odds_label="mis", percentage_label="fortune"
+                )
+            else:
+                self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
 
         if self.decision["choice"] is not None:
             index = char_decision_as_index(self.decision["choice"])
             self.decision["id"] = self.outcomes[index]["id"]
             if self.decision["amount"] == 0:
-                self.decision["amount"] = int(balance * (self.settings.percentage / 100))
+                self.decision["amount"] = int(
+                    balance * (self.settings.percentage / 100)
+                )
             self.decision["amount"] = min(
                 self.decision["amount"],
                 self.settings.max_points,
