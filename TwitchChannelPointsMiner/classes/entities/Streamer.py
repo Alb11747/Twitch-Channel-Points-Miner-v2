@@ -40,6 +40,7 @@ class StreamerSettings(object):
         self.watch_streak = watch_streak
         self.bet = bet
         self.join_chat = join_chat
+        self.default()
 
     def default(self):
         for name in [

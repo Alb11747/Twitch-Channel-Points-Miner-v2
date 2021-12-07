@@ -2,6 +2,7 @@ import logging
 import copy
 from enum import Enum, auto
 from random import uniform
+from typing import Union
 
 from millify import millify
 
@@ -74,7 +75,8 @@ class BetSettings(object):
     __slots__ = [
         "strategy",
         "percentage",
-        "percentage_artifact",
+        "percentage_genshin",
+        "genshin_chances",
         "percentage_gap",
         "max_points",
         "minimum_points",
@@ -88,7 +90,8 @@ class BetSettings(object):
         self,
         strategy: Strategy = None,
         percentage: int = None,
-        percentage_artifact: int = None,
+        percentage_genshin: int = None,
+        genshin_chances: dict[str:int] = None,
         percentage_gap: int = None,
         max_points: int = None,
         minimum_points: int = None,
@@ -99,7 +102,8 @@ class BetSettings(object):
     ):
         self.strategy = strategy
         self.percentage = percentage
-        self.percentage_artifact = percentage_artifact
+        self.percentage_genshin = percentage_genshin
+        self.genshin_chances = genshin_chances
         self.percentage_gap = percentage_gap
         self.max_points = max_points
         self.minimum_points = minimum_points
@@ -107,22 +111,29 @@ class BetSettings(object):
         self.filter_condition = filter_condition
         self.delay = delay
         self.delay_mode = delay_mode
+        self.default()
 
     def default(self):
-        self.strategy = self.strategy if not None else Strategy.SMART
-        self.percentage = self.percentage if not None else 5
-        self.percentage_artifact = (
-            self.percentage_artifact if not None else self.percentage
-        )
-        self.percentage_gap = self.percentage_gap if not None else 20
-        self.max_points = self.max_points if not None else 50000
-        self.minimum_points = self.minimum_points if not None else 0
-        self.stealth_mode = self.stealth_mode if not None else False
-        self.delay = self.delay if not None else 6
-        self.delay_mode = self.delay_mode if not None else DelayMode.FROM_END
+        self.strategy = self.strategy or Strategy.SMART
+        self.percentage = self.percentage or 5
+        self.percentage_genshin = self.percentage_genshin or self.percentage
+        self.genshin_chances = self.genshin_chances or {}
+        for t, c in {
+            "artifact": 7.8,
+            "fortune": 18.75,
+            "weekly_boss_items": 40.6,
+            "weekly_boss_3_mats": 40,
+        }.items():
+            self.genshin_chances.setdefault(t, c)
+        self.percentage_gap = self.percentage_gap or 20
+        self.max_points = self.max_points or 50000
+        self.minimum_points = self.minimum_points or 0
+        self.stealth_mode = self.stealth_mode or False
+        self.delay = self.delay or 6
+        self.delay_mode = self.delay_mode or DelayMode.FROM_END
 
     def __repr__(self):
-        return f"BetSettings(strategy={self.strategy}, percentage={self.percentage}, percentage_artifact={self.percentage_artifact}, percentage_gap={self.percentage_gap}, max_points={self.max_points}, minimum_points={self.minimum_points}, stealth_mode={self.stealth_mode})"
+        return f"BetSettings(strategy={self.strategy}, percentage={self.percentage}, percentage_genshin={self.percentage_genshin}, genshin_chances={self.genshin_chances}, percentage_genshin={self.percentage_genshin}, percentage_gap={self.percentage_gap}, max_points={self.max_points}, minimum_points={self.minimum_points}, stealth_mode={self.stealth_mode})"
 
 
 class Bet(object):
@@ -285,43 +296,85 @@ class Bet(object):
             def event_chance(
                 event_odds: float,
                 multiplier_scaling: float = None,
-                odds_label: str = "",
-                percentage_label = "",
+                odds_label: Union[str, list] = "",
+                percentage_label: Union[str, list] = "",
+                strict: bool = False,
             ) -> None:
                 # multiplier_scaling: Odd difference from event / multiplier scaling = multiplier (Max 2x)
                 if multiplier_scaling is None:
                     multiplier_scaling = event_odds
                 odds, label = max(
-                    (self.outcomes[0][OutcomeKeys.ODDS], self.outcomes[0]["title"]),
-                    (self.outcomes[1][OutcomeKeys.ODDS], self.outcomes[1]["title"]),
+                    (
+                        self.outcomes[0][OutcomeKeys.ODDS],
+                        self.outcomes[0]["title"].lower(),
+                    ),
+                    (
+                        self.outcomes[1][OutcomeKeys.ODDS],
+                        self.outcomes[1]["title"].lower(),
+                    ),
                 )
                 multiplier = 1 + min(abs(odds - event_odds) / multiplier_scaling - 1, 1)
                 if odds > event_odds:
-                    if odds_label not in label.lower():
+                    self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
+                    if not isinstance(odds_label, list):
+                        odds_label = [odds_label]
+                    if not any(label in label.lower() for label in odds_label):
                         logger.warning(
                             f"Event odds label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
                         )
-                    self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
+                        if strict:
+                            self.decision["amount"] = 10
+                            return
+                    # Normalize multiplier for odds event chance
                     multiplier /= event_odds
                 else:
-                    if percentage_label not in label.lower():
-                        logger.warning(
-                            f"Event percentage label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
-                        )
                     self.decision["choice"] = self.__return_choice(
                         OutcomeKeys.ODDS_PERCENTAGE
                     )
+                    if not isinstance(percentage_label, list):
+                        percentage_label = [percentage_label]
+                    if not any(label in label.lower() for label in percentage_label):
+                        logger.warning(
+                            f"Event percentage label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
+                        )
+                        if strict:
+                            self.decision["amount"] = 10
+                            return
+                    # Normalize multiplier for percentage event chance
                     multiplier *= 1 - 1 / event_odds
                 self.decision["amount"] = int(
-                    balance * (self.settings.percentage_artifact * multiplier / 100)
+                    balance * (self.settings.percentage_genshin * multiplier / 100)
                 )
 
             percent_to_odds = lambda percent: (1 - percent / 100) / (percent / 100) + 1
-            if "good" in title.lower() and "artifact" in title.lower():
-                event_chance(percent_to_odds(8), odds_label="y", percentage_label="n")
-            elif "fortune" in title.lower():
+            title = title.lower()
+            if "good" in title and "artifact" in title:
                 event_chance(
-                    percent_to_odds(18.75), odds_label="mis", percentage_label="fortune"
+                    percent_to_odds(self.settings.genshin_chances["artifact"]),
+                    odds_label="y",
+                    percentage_label="n",
+                )
+            elif "fortune" in title:
+                event_chance(
+                    percent_to_odds(self.settings.genshin_chances["fortune"]),
+                    odds_label="mis",
+                    percentage_label="fortune",
+                )
+            elif ("proto" in title or "billet" in title) and "solvent" in title:
+                event_chance(
+                    percent_to_odds(self.settings.genshin_chances["weekly_boss_items"]),
+                    odds_label=["yes", "prayge"],
+                    percentage_label=["no", "pepeloser"],
+                    strict=True,
+                )
+            elif ("3" in title or "three" in title) and "mat" in title:
+                event_chance(
+                    percent_to_odds(
+                        self.settings.genshin_chances["weekly_boss_3_mats"]
+                    ),
+                    odds_label="yes",
+                    percentage_label="no",
+                    strict=True,
                 )
             else:
                 self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
@@ -330,12 +383,9 @@ class Bet(object):
             index = char_decision_as_index(self.decision["choice"])
             self.decision["id"] = self.outcomes[index]["id"]
             if self.decision["amount"] == 0:
-                self.decision["amount"] = int(
-                    balance * (self.settings.percentage / 100)
-                )
+                self.decision["amount"] = balance * (self.settings.percentage / 100)
             self.decision["amount"] = min(
-                self.decision["amount"],
-                self.settings.max_points,
+                self.decision["amount"], self.settings.max_points, balance
             )
             if (
                 self.settings.stealth_mode is True
