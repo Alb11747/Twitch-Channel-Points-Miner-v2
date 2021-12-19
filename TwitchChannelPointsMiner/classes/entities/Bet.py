@@ -2,7 +2,6 @@ import logging
 import copy
 from enum import Enum, auto
 from random import uniform
-from typing import Union
 
 from millify import millify
 
@@ -119,7 +118,7 @@ class BetSettings(object):
         self.percentage_genshin = self.percentage_genshin or self.percentage
         self.genshin_chances = self.genshin_chances or {}
         for t, c in {
-            "artifact": 7.8,
+            "artifact": 7,
             "fortune": 18.75,
             "weekly_boss_items": 40.6,
             "weekly_boss_3_mats": 40,
@@ -296,8 +295,8 @@ class Bet(object):
             def event_chance(
                 event_odds: float,
                 multiplier_scaling: float = None,
-                odds_label: Union[str, list] = "",
-                percentage_label: Union[str, list] = "",
+                odds_label: str = [],
+                percentage_label: str = [],
                 strict: bool = False,
             ) -> None:
                 # multiplier_scaling: Odd difference from event / multiplier scaling = multiplier (Max 2x)
@@ -318,7 +317,7 @@ class Bet(object):
                     self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
                     if not isinstance(odds_label, list):
                         odds_label = [odds_label]
-                    if not any(label in label.lower() for label in odds_label):
+                    if len(odds_label) > 0 and not any(label in label.lower() for label in odds_label):
                         logger.warning(
                             f"Event odds label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
                         )
@@ -333,7 +332,7 @@ class Bet(object):
                     )
                     if not isinstance(percentage_label, list):
                         percentage_label = [percentage_label]
-                    if not any(label in label.lower() for label in percentage_label):
+                    if len(percentage_label) > 0 and not any(label in label.lower() for label in percentage_label):
                         logger.warning(
                             f"Event percentage label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
                         )
