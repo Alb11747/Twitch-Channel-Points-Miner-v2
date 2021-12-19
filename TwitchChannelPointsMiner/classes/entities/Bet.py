@@ -121,6 +121,7 @@ class BetSettings(object):
             "artifact": 7,
             "fortune": 18.75,
             "weekly_boss_items": 40.6,
+            "boss_2_or_3_mats": 45,
             "weekly_boss_3_mats": 40,
         }.items():
             self.genshin_chances.setdefault(t, c)
@@ -299,9 +300,13 @@ class Bet(object):
                 percentage_label: str = [],
                 strict: bool = False,
             ) -> None:
+                if not isinstance(odds_label, list):
+                    odds_label = [odds_label]
                 # multiplier_scaling: Odd difference from event / multiplier scaling = multiplier (Max 2x)
                 if multiplier_scaling is None:
                     multiplier_scaling = event_odds
+                if not isinstance(percentage_label, list):
+                    percentage_label = [percentage_label]
                 odds, label = max(
                     (
                         self.outcomes[0][OutcomeKeys.ODDS],
@@ -312,11 +317,15 @@ class Bet(object):
                         self.outcomes[1]["title"].lower(),
                     ),
                 )
+                if strict:
+                    in_labels = lambda title, labels: any((title in label) for label in labels)
+                    if in_labels(self.outcomes[0]["title"].lower(), odds_label) and in_labels(self.outcomes[1]["title"].lower(), percentage_label):
+                        odds, label = (self.outcomes[0][OutcomeKeys.ODDS], self.outcomes[0]["title"].lower())
+                    elif in_labels(self.outcomes[1]["title"].lower(), odds_label) and in_labels(self.outcomes[0]["title"].lower(), percentage_label):
+                        odds, label = (self.outcomes[1][OutcomeKeys.ODDS], self.outcomes[1]["title"].lower())
                 multiplier = 1 + min(abs(odds - event_odds) / multiplier_scaling - 1, 1)
                 if odds > event_odds:
                     self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS)
-                    if not isinstance(odds_label, list):
-                        odds_label = [odds_label]
                     if len(odds_label) > 0 and not any(label in label.lower() for label in odds_label):
                         logger.warning(
                             f"Event odds label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
@@ -330,8 +339,6 @@ class Bet(object):
                     self.decision["choice"] = self.__return_choice(
                         OutcomeKeys.ODDS_PERCENTAGE
                     )
-                    if not isinstance(percentage_label, list):
-                        percentage_label = [percentage_label]
                     if len(percentage_label) > 0 and not any(label in label.lower() for label in percentage_label):
                         logger.warning(
                             f"Event percentage label not correct - Label: {label}, Expected: {odds_label}\n{title}: {self.outcomes[0]['title']} - {self.outcomes[1]['title']}"
@@ -364,6 +371,15 @@ class Bet(object):
                     percent_to_odds(self.settings.genshin_chances["weekly_boss_items"]),
                     odds_label=["yes", "prayge"],
                     percentage_label=["no", "pepeloser"],
+                    strict=True,
+                )
+            elif ("2" in title or "two" in title) and "or" in title and ("3" in title or "three" in title):
+                event_chance(
+                    percent_to_odds(
+                        self.settings.genshin_chances["boss_2_or_3_mats"]
+                    ),
+                    odds_label=["2", "two"],
+                    percentage_label=["3", "three"],
                     strict=True,
                 )
             elif ("3" in title or "three" in title) and "mat" in title:
