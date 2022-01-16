@@ -257,9 +257,10 @@ class Bet(object):
         else:
             odds, percentage, odds_choice = self.outcomes[1], self.outcomes[0], "B"
         self.decision["choice"] = odds_choice
+        total_points = self.outcomes[0][OutcomeKeys.DECISION_POINTS] + self.outcomes[1][OutcomeKeys.DECISION_POINTS]
         self.decision["amount"] = min(  # Stop from swaping Odds and Percentage based on points bet
-            int(balance * (self.settings.percentage / 100)),
-            (percentage[OutcomeKeys.TOTAL_POINTS] - odds[OutcomeKeys.TOTAL_POINTS]) * 0.5,  # (0-1) Maximum differnce to change
+            int(min(balance, total_points) * (self.settings.percentage / 100)),
+            (percentage[OutcomeKeys.TOTAL_POINTS] - odds[OutcomeKeys.TOTAL_POINTS]) * 0.5,  # (0-1) Maximum differnce from 50% to change
         )
 
     def smart_strategy(self, balance: int) -> None:
@@ -267,7 +268,14 @@ class Bet(object):
         if difference < self.settings.percentage_gap:
             self.odds_strategy(balance)
         else:
-            self.decision["choice"] = self.__return_choice(OutcomeKeys.TOTAL_USERS)
+            total_points = self.outcomes[0][OutcomeKeys.DECISION_POINTS] + self.outcomes[1][OutcomeKeys.DECISION_POINTS]
+            user_ratio = self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] / \
+                (self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] + self.outcomes[1][OutcomeKeys.PERCENTAGE_USERS])
+            self.decision["choice"] = "A" if user_ratio > self.outcomes[0][OutcomeKeys.ODDS_PERCENTAGE] else "B"
+            self.decision["amount"] = min(  # Stop from going over threshold
+                int(min(balance, total_points) * (self.settings.percentage / 100)),
+                abs(user_ratio - self.outcomes[0][OutcomeKeys.ODDS_PERCENTAGE]) * total_points * 0.5,
+            )
 
     def calculate_amount_using_odds(
         self,
@@ -335,11 +343,11 @@ class Bet(object):
                     self.smart_strategy(balance)
                     return
             o, c, m = percentage[OutcomeKeys.TOTAL_POINTS], 1 / (1 - 1 / event_odds), 1 / (1 - 1 / event_odds) - 1
-        # Account for Bet amount, Scale based on Difference, and Normalize for Bet Odds
+        # Account for Bet Amount, Scale based on Difference, and Normalize for Bet Odds
         self.decision["amount"] = min(
             (math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o)
             / (2 * c * m),
-            balance * (self.settings.percentage_genshin / 100) / c,  # c = choice_odds
+            1.5 * balance * (self.settings.percentage_genshin / 100) / c,  # c = choice_odds
         )
 
     def calculate(self, balance: int, title: str = "") -> dict:
@@ -377,10 +385,16 @@ class Bet(object):
                     balance,
                     percent_to_odds(self.settings.genshin_chances["5* artifact"]),
                     odds_labels="same",
-                    percentage_labels="different",
+                    percentage_labels="diff",
                     title=title,
                 )
-            elif re.search("(proto|billet) or solvent", title):
+            elif re.search("50 ?/ ?50", title):
+                self.calculate_amount_using_odds(
+                    balance,
+                    percent_to_odds(50),
+                    title=title,
+                )
+            elif re.search("(proto|billet) or( dream)? solvent|solvent or (proto|billet)", title):
                 self.calculate_amount_using_odds(
                     balance,
                     percent_to_odds(self.settings.genshin_chances["weekly boss items"]),
@@ -388,7 +402,7 @@ class Bet(object):
                     percentage_labels=["no", "pepeloser"],
                     title=title,
                 )
-            elif re.search("(2|two) or (3|three)", title):
+            elif re.search("(2|two) or (3|three)|(3|three) or (2|two)", title):
                 self.calculate_amount_using_odds(
                     balance,
                     percent_to_odds(self.settings.genshin_chances["boss 2 or 3 mats"]),
@@ -411,7 +425,8 @@ class Bet(object):
             index = char_decision_as_index(self.decision["choice"])
             self.decision["id"] = self.outcomes[index]["id"]
             if not self.decision["amount"]:
-                self.decision["amount"] = int(balance * (self.settings.percentage / 100))
+                total_points = self.outcomes[0][OutcomeKeys.DECISION_POINTS] + self.outcomes[1][OutcomeKeys.DECISION_POINTS]
+                self.decision["amount"] = int(min(balance, total_points) * (self.settings.percentage / 100))
             self.decision["amount"] = min(max(self.decision["amount"], self.settings.minimum_points), self.settings.max_points, balance)
             if self.settings.stealth_mode is True:
                 self.decision["amount"] = min(self.decision["amount"], self.outcomes[index][OutcomeKeys.TOP_POINTS] - 1)
