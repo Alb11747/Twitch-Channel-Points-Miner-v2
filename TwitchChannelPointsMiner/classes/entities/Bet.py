@@ -257,7 +257,7 @@ class Bet(object):
         else:
             odds, percentage, odds_choice = self.outcomes[1], self.outcomes[0], "B"
         self.decision["choice"] = odds_choice
-        total_points = self.outcomes[0][OutcomeKeys.DECISION_POINTS] + self.outcomes[1][OutcomeKeys.DECISION_POINTS]
+        total_points = self.outcomes[0][OutcomeKeys.TOTAL_POINTS] + self.outcomes[1][OutcomeKeys.TOTAL_POINTS]
         self.decision["amount"] = min(  # Stop from swaping Odds and Percentage based on points bet
             int(min(balance, total_points) * (self.settings.percentage / 100)),
             (percentage[OutcomeKeys.TOTAL_POINTS] - odds[OutcomeKeys.TOTAL_POINTS]) * 0.5,  # (0-1) Maximum differnce from 50% to change
@@ -268,7 +268,7 @@ class Bet(object):
         if difference < self.settings.percentage_gap:
             self.odds_strategy(balance)
         else:
-            total_points = self.outcomes[0][OutcomeKeys.DECISION_POINTS] + self.outcomes[1][OutcomeKeys.DECISION_POINTS]
+            total_points = self.outcomes[0][OutcomeKeys.TOTAL_POINTS] + self.outcomes[1][OutcomeKeys.TOTAL_POINTS]
             user_ratio = self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] / \
                 (self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] + self.outcomes[1][OutcomeKeys.PERCENTAGE_USERS])
             self.decision["choice"] = "A" if user_ratio > self.outcomes[0][OutcomeKeys.ODDS_PERCENTAGE] else "B"
@@ -344,11 +344,11 @@ class Bet(object):
                     return
             o, c, m = percentage[OutcomeKeys.TOTAL_POINTS], 1 / (1 - 1 / event_odds), 1 / (1 - 1 / event_odds) - 1
         # Account for Bet Amount, Scale based on Difference, and Normalize for Bet Odds
-        self.decision["amount"] = min(
+        self.decision["amount"] = int(min(
             (math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o)
             / (2 * c * m),
             1.5 * balance * (self.settings.percentage_genshin / 100) / c,  # c = choice_odds
-        )
+        ))
 
     def calculate(self, balance: int, title: str = "") -> dict:
         self.decision = {"choice": None, "amount": None, "id": None}
@@ -376,8 +376,8 @@ class Bet(object):
                 self.calculate_amount_using_odds(
                     balance,
                     percent_to_odds(self.settings.genshin_chances["fortune"]),
-                    odds_labels="mis",
-                    percentage_labels="fortune",
+                    odds_labels=["mis", "bad"],
+                    percentage_labels=["fortune", "good"],
                     title=title,
                 )
             elif "5* artifact" in title:
