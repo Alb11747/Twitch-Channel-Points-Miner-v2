@@ -17,7 +17,7 @@ class Strategy(Enum):
     HIGH_ODDS = auto()
     PERCENTAGE = auto()
     SMART = auto()
-    GENSHIN = auto()
+    EVENTS = auto()
 
     def __str__(self):
         return self.name
@@ -76,8 +76,8 @@ class BetSettings(object):
     __slots__ = [
         "strategy",
         "percentage",
-        "percentage_genshin",
-        "genshin_chances",
+        "event_percentage",
+        "events",
         "percentage_gap",
         "max_points",
         "minimum_points",
@@ -91,8 +91,8 @@ class BetSettings(object):
         self,
         strategy: Strategy = None,
         percentage: int = None,
-        percentage_genshin: int = None,
-        genshin_chances: dict[str:int] = None,
+        event_percentage: int = None,
+        events: dict[str:int] = None,
         percentage_gap: int = None,
         max_points: int = None,
         minimum_points: int = None,
@@ -103,8 +103,8 @@ class BetSettings(object):
     ):
         self.strategy = strategy
         self.percentage = percentage
-        self.percentage_genshin = percentage_genshin
-        self.genshin_chances = genshin_chances
+        self.event_percentage = event_percentage
+        self.events = events
         self.percentage_gap = percentage_gap
         self.max_points = max_points
         self.minimum_points = minimum_points
@@ -117,17 +117,8 @@ class BetSettings(object):
     def default(self):
         self.strategy = self.strategy or Strategy.SMART
         self.percentage = self.percentage or 5
-        self.percentage_genshin = self.percentage_genshin or self.percentage
-        self.genshin_chances = self.genshin_chances or {}
-        for t, c in {
-            "artifact": 6,
-            "fortune": 18.75,
-            "5* artifact": 46.56125,
-            "weekly boss items": 41,
-            "boss 2 or 3 mats": 45,
-            "weekly boss 3 mats": 40,
-        }.items():
-            self.genshin_chances.setdefault(t, c)
+        self.event_percentage = self.event_percentage or self.percentage
+        self.events = self.events or []
         self.percentage_gap = self.percentage_gap or 20
         self.max_points = self.max_points or 50000
         self.minimum_points = self.minimum_points or 0
@@ -136,7 +127,7 @@ class BetSettings(object):
         self.delay_mode = self.delay_mode or DelayMode.FROM_END
 
     def __repr__(self):
-        return f"BetSettings(strategy={self.strategy}, percentage={self.percentage}, percentage_genshin={self.percentage_genshin}, genshin_chances={self.genshin_chances}, percentage_genshin={self.percentage_genshin}, percentage_gap={self.percentage_gap}, max_points={self.max_points}, minimum_points={self.minimum_points}, stealth_mode={self.stealth_mode})"
+        return f"BetSettings(strategy={self.strategy}, percentage={self.percentage}, event_percentage={self.event_percentage}, events={self.events}, percentage_gap={self.percentage_gap}, max_points={self.max_points}, minimum_points={self.minimum_points}, stealth_mode={self.stealth_mode})"
 
 
 class Bet(object):
@@ -269,23 +260,25 @@ class Bet(object):
             self.odds_strategy(balance)
         else:
             total_points = self.outcomes[0][OutcomeKeys.TOTAL_POINTS] + self.outcomes[1][OutcomeKeys.TOTAL_POINTS]
-            user_ratio = self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] / \
-                (self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] + self.outcomes[1][OutcomeKeys.PERCENTAGE_USERS])
+            user_ratio = self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] / (
+                self.outcomes[0][OutcomeKeys.PERCENTAGE_USERS] + self.outcomes[1][OutcomeKeys.PERCENTAGE_USERS]
+            )
             self.decision["choice"] = "A" if user_ratio > self.outcomes[0][OutcomeKeys.ODDS_PERCENTAGE] else "B"
             self.decision["amount"] = min(  # Stop from going over threshold
                 int(min(balance, total_points) * (self.settings.percentage / 100)),
                 abs(user_ratio - self.outcomes[0][OutcomeKeys.ODDS_PERCENTAGE]) * total_points * 0.5,
             )
 
-    def calculate_amount_using_odds(
+    def chance_amount_calculations(
         self,
         balance: int,
-        event_odds: float,
+        event_chance: float,
         odds_labels: str = [],
         percentage_labels: str = [],
         strict: bool = True,
         title: str = "Title",
     ) -> None:
+        event_odds = 1 / (event_chance / 100)
         if not isinstance(odds_labels, list):
             odds_labels = [odds_labels]
         if not isinstance(percentage_labels, list):
@@ -309,15 +302,11 @@ class Bet(object):
             event_str = f"Label: {odds['title']} - Expected: {percentage['title']} - \
 {title}: {self.outcomes[0]['title']}:{self.outcomes[0][OutcomeKeys.ODDS_PERCENTAGE]} - {self.outcomes[1]['title']}:{self.outcomes[1][OutcomeKeys.ODDS_PERCENTAGE]}"
             if strict:
-                if in_labels(self.outcomes[0]["title"], odds_labels) and in_labels(
-                    self.outcomes[1]["title"], percentage_labels
-                ):
+                if in_labels(self.outcomes[0]["title"], odds_labels) and in_labels(self.outcomes[1]["title"], percentage_labels):
                     logger.warning(f"Odds label does not match (Overriding due to strict mode) - {event_str}", log_extra)
                     odds, odds_choice = self.outcomes[0], "A"
                     percentage, percentage_choice = self.outcomes[1], "B"
-                elif in_labels(self.outcomes[1]["title"], odds_labels) and in_labels(
-                    self.outcomes[0]["title"], percentage_labels
-                ):
+                elif in_labels(self.outcomes[1]["title"], odds_labels) and in_labels(self.outcomes[0]["title"], percentage_labels):
                     logger.warning(f"Odds label does not match (Overriding due to strict mode) - {event_str}", log_extra)
                     odds, odds_choice = self.outcomes[1], "B"
                     percentage, percentage_choice = self.outcomes[0], "A"
@@ -326,7 +315,7 @@ class Bet(object):
             else:
                 logger.warning(f"Odds label does not match (Enable strict mode to override) - {event_str}", log_extra)
 
-        b, p, t = balance, self.settings.percentage_genshin / 100, self.total_points
+        b, p, t = balance, self.settings.event_percentage / 100, self.total_points
         if odds[OutcomeKeys.ODDS] > event_odds:
             self.decision["choice"] = odds_choice
             if len(odds_labels) > 0 and not in_labels(odds["title"], odds_labels):
@@ -344,13 +333,15 @@ class Bet(object):
                     return
             o, c, m = percentage[OutcomeKeys.TOTAL_POINTS], 1 / (1 - 1 / event_odds), 1 / (1 - 1 / event_odds) - 1
         # Account for Bet Amount, Scale based on Difference, and Normalize for Bet Odds
-        self.decision["amount"] = int(min(
-            (math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o)
-            / (2 * c * m),
-            1.5 * balance * (self.settings.percentage_genshin / 100) / c,  # c = choice_odds
-        ))
+        self.decision["amount"] = int(
+            min(
+                (math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o)
+                / (2 * c * m),
+                1.5 * balance * (self.settings.event_percentage / 100) / c,  # c = choice_odds
+            )
+        )
 
-    def calculate(self, balance: int, title: str = "") -> dict:
+    def calculate(self, balance: int, title: str = None) -> dict:
         self.decision = {"choice": None, "amount": None, "id": None}
 
         if self.settings.strategy == Strategy.MOST_VOTED:
@@ -361,64 +352,30 @@ class Bet(object):
             self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS_PERCENTAGE)
         elif self.settings.strategy == Strategy.SMART:
             self.smart_strategy(balance)
-        elif self.settings.strategy == Strategy.GENSHIN:
-            percent_to_odds = lambda percent: 1 / (percent / 100)
-            title = title.lower()
-            if "good artifact" in title:
-                self.calculate_amount_using_odds(
-                    balance,
-                    percent_to_odds(self.settings.genshin_chances["artifact"]),
-                    odds_labels="y",
-                    percentage_labels="n",
-                    title=title,
-                )
-            elif "fortune" in title:
-                self.calculate_amount_using_odds(
-                    balance,
-                    percent_to_odds(self.settings.genshin_chances["fortune"]),
-                    odds_labels=["mis", "bad"],
-                    percentage_labels=["fortune", "good"],
-                    title=title,
-                )
-            elif "5* artifact" in title:
-                self.calculate_amount_using_odds(
-                    balance,
-                    percent_to_odds(self.settings.genshin_chances["5* artifact"]),
-                    odds_labels="same",
-                    percentage_labels="diff",
-                    title=title,
-                )
-            elif re.search("50 ?/ ?50", title):
-                self.calculate_amount_using_odds(
-                    balance,
-                    percent_to_odds(50),
-                    title=title,
-                )
-            elif re.search("(proto|billet) or( dream)? solvent|solvent or (proto|billet)", title):
-                self.calculate_amount_using_odds(
-                    balance,
-                    percent_to_odds(self.settings.genshin_chances["weekly boss items"]),
-                    odds_labels=["yes", "prayge"],
-                    percentage_labels=["no", "pepeloser"],
-                    title=title,
-                )
-            elif re.search("(2|two) or (3|three)|(3|three) or (2|two)", title):
-                self.calculate_amount_using_odds(
-                    balance,
-                    percent_to_odds(self.settings.genshin_chances["boss 2 or 3 mats"]),
-                    odds_labels=["2", "two"],
-                    percentage_labels=["3", "three"],
-                    title=title,
-                )
-            elif re.search("(3|three) (mats|materials)", title):
-                self.calculate_amount_using_odds(
-                    balance,
-                    percent_to_odds(self.settings.genshin_chances["weekly boss 3 mats"]),
-                    odds_labels="yes",
-                    percentage_labels="no",
-                    title=title,
-                )
+        elif self.settings.strategy == Strategy.EVENTS:
+            if title is not None:
+                title = title.lower()
+                for event in self.settings.events:
+                    title_match = False
+                    if isinstance(event["title"], str):
+                        title_match = bool(re.search(event["title"], title))
+                    elif callable(event["title"]):
+                        title_match = bool(event["title"](title))
+                    else:
+                        logger.error(f"Event \"title\" is not valid type", {"color": Settings.logger.color_palette.BET_FAILED})
+                    if title_match:
+                        self.chance_amount_calculations(
+                            balance,
+                            event["chance"],
+                            odds_labels=event.get("odds_labels", []),
+                            percentage_labels=event.get("percentage_labels", []),
+                            title=title,
+                        )
+                        break
+                else:
+                    self.smart_strategy(balance)
             else:
+                logger.error(f"Argument is None: title", {"color": Settings.logger.color_palette.BET_FAILED})
                 self.smart_strategy(balance)
 
         if self.decision["choice"] is not None:
