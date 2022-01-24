@@ -382,7 +382,7 @@ class Bet(object):
             index = char_decision_as_index(self.decision["choice"])
             self.decision["id"] = self.outcomes[index]["id"]
             if not self.decision["amount"]:
-                total_points = self.outcomes[0][OutcomeKeys.DECISION_POINTS] + self.outcomes[1][OutcomeKeys.DECISION_POINTS]
+                total_points = self.outcomes[0][OutcomeKeys.TOTAL_POINTS] + self.outcomes[1][OutcomeKeys.TOTAL_POINTS]
                 self.decision["amount"] = int(min(balance, total_points) * (self.settings.percentage / 100))
             self.decision["amount"] = min(max(self.decision["amount"], self.settings.minimum_points), self.settings.max_points, balance)
             if self.settings.stealth_mode is True:
