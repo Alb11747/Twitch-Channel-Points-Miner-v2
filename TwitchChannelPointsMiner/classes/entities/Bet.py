@@ -370,7 +370,7 @@ class Bet(object):
                             odds_labels=event.get("odds_labels", []),
                             percentage_labels=event.get("percentage_labels", []),
                             strict=event.get("strict", True),
-                            title=title,
+                            title=title
                         )
                         break
                 else:
