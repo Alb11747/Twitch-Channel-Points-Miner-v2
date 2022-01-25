@@ -362,7 +362,7 @@ class Bet(object):
                     elif callable(event["title"]):
                         title_match = bool(event["title"](title))
                     else:
-                        logger.error(f"Event \"title\" is not valid type", {"color": Settings.logger.color_palette.BET_FAILED})
+                        logger.error("Event 'title' is not valid type", {"color": Settings.logger.color_palette.BET_FAILED})
                     if title_match:
                         self.chance_amount_calculations(
                             balance,
@@ -376,7 +376,7 @@ class Bet(object):
                 else:
                     self.smart_strategy(balance)
             else:
-                logger.error(f"Argument is None: title", {"color": Settings.logger.color_palette.BET_FAILED})
+                logger.error("Argument is None: title", {"color": Settings.logger.color_palette.BET_FAILED})
                 self.smart_strategy(balance)
 
         if self.decision["choice"] is not None:
