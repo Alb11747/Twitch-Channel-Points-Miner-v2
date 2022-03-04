@@ -83,7 +83,7 @@ class BetEvent(object):
         odds_labels: Union[str, list] = [],
         percentage_labels: Union[str, list] = [],
         max_points: int = None,
-        strict: bool = True
+        strict: bool = True,
     ):
         self.title = title
         self.chance = chance
@@ -113,32 +113,41 @@ class BetSettings(object):
 
     def __init__(
         self,
-        strategy: Strategy = Strategy.SMART,
-        percentage: int = 5,
-        event_percentage: int = 20,
-        events: list[BetEvent] = [],
-        percentage_gap: int = 20,
-        max_points: int = 50000,
-        minimum_points: int = 0,
-        stealth_mode: bool = 6,
+        strategy: Strategy = None,
+        percentage: int = None,
+        percentage_gap: int = None,
+        events: list[BetEvent] = None,
+        event_percentage: int = None,
+        max_points: int = None,
+        minimum_points: int = None,
+        stealth_mode: bool = None,
         filter_condition: FilterCondition = None,
-        delay: float = DelayMode.FROM_END,
+        delay: float = None,
         delay_mode: DelayMode = None,
     ):
         self.strategy = strategy
         self.percentage = percentage
-        self.event_percentage = event_percentage
-        self.events = events
         self.percentage_gap = percentage_gap
+        self.events = events
+        self.event_percentage = event_percentage
         self.max_points = max_points
         self.minimum_points = minimum_points
         self.stealth_mode = stealth_mode
         self.filter_condition = filter_condition
         self.delay = delay
         self.delay_mode = delay_mode
-    
+
     def default(self):
-        self.__init__()
+        self.strategy = self.strategy if self.strategy is not None else Strategy.SMART
+        self.percentage = self.percentage if self.percentage is not None else 5
+        self.events = self.events if self.events is not None else []
+        self.event_percentage = self.event_percentage if self.event_percentage is not None else 20
+        self.percentage_gap = self.percentage_gap if self.percentage_gap is not None else 20
+        self.max_points = self.max_points if self.max_points is not None else 50000
+        self.minimum_points = self.minimum_points if self.minimum_points is not None else 0
+        self.stealth_mode = self.stealth_mode if self.stealth_mode is not None else False
+        self.delay = self.delay if self.delay is not None else 6
+        self.delay_mode = self.delay_mode if self.delay_mode is not None else DelayMode.FROM_END
 
     def __repr__(self):
         return f"{type(self).__name__}({', '.join(f'{attr}={getattr(self, attr)}' for attr in self.__slots__)})"
@@ -357,11 +366,14 @@ class Bet(object):
                     return
             o, c, m = percentage[OutcomeKeys.TOTAL_POINTS], 1 / (1 - 1 / event_odds), 1 / (1 - 1 / event_odds) - 1
         # Account for Bet Amount, Scale based on Difference, and Normalize for Bet Odds
-        self.decision["amount"] = max(min(
-            (math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o)
-            / (2 * c * m),
-            1.5 * balance * (self.settings.event_percentage / 100) / c,  # c = choice_odds
-        ), self.settings.minimum_points)
+        self.decision["amount"] = max(
+            min(
+                (math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o)
+                / (2 * c * m),
+                1.5 * balance * (self.settings.event_percentage / 100) / c,  # c = choice_odds
+            ),
+            self.settings.minimum_points,
+        )
         if max_points is not None:
             self.decision["amount"] = min(self.decision["amount"], max_points)
         self.decision["amount"] = int(self.decision["amount"])
