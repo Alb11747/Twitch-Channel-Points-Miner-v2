@@ -365,14 +365,12 @@ class Bet(object):
                     return
             o, c, m = percentage[OutcomeKeys.TOTAL_POINTS], 1 / (1 - 1 / event_odds), 1 / (1 - 1 / event_odds) - 1
         # Account for Bet Amount, Scale based on Difference, and Normalize for Bet Odds
-        self.decision["amount"] = min(
-                (math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o)
-                / (2 * c * m),
-                1.5 * balance * (self.settings.event_percentage / 100) / c,  # c = choice_odds
-            )
+        self.decision["amount"] = (
+            math.sqrt((b * c * p - b * p + c * m * o) ** 2 - 4 * c * m * (b * c * o * p - b * p * t)) - b * c * p + b * p - c * m * o
+        ) / (2 * c * m)
         if max_points is not None:
-            self.decision["amount"] = min(self.decision["amount"], max_points)
-        self.decision["amount"] = int(self.decision["amount"])
+            self.decision["amount"] = min(self.decision["amount"], max_points / c)  # c = choice_odds
+        self.decision["amount"] = int(min(self.decision["amount"], balance / c))
 
     def calculate(self, balance: int, title: str = None) -> dict:
         self.decision = {"choice": None, "amount": None, "id": None}
@@ -413,8 +411,8 @@ class Bet(object):
                 self.decision["amount"] = int(min(balance, total_points) * (self.settings.percentage / 100))
             self.decision["amount"] = max(self.decision["amount"], self.settings.minimum_points)
             if not is_event:
-                self.decision["amount"] = min(self.decision["amount"], self.settings.max_points, balance)
+                self.decision["amount"] = min(self.decision["amount"], self.settings.max_points)
             if self.settings.stealth_mode is True:
                 self.decision["amount"] = min(self.decision["amount"], self.outcomes[index][OutcomeKeys.TOP_POINTS] - 1)
-            self.decision["amount"] = int(self.decision["amount"])
+            self.decision["amount"] = int(min(self.decision["amount"], balance))
         return self.decision
