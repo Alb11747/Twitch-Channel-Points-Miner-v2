@@ -17,6 +17,7 @@ class Strategy(Enum):
     MOST_VOTED = auto()
     HIGH_ODDS = auto()
     PERCENTAGE = auto()
+    SMART_MONEY = auto()
     SMART = auto()
 
     def __str__(self):
@@ -141,12 +142,20 @@ class BetSettings(object):
         self.percentage = self.percentage if self.percentage is not None else 5
         self.events = self.events if self.events is not None else []
         self.event_percentage = self.event_percentage if self.event_percentage is not None else 20
-        self.percentage_gap = self.percentage_gap if self.percentage_gap is not None else 20
+        self.percentage_gap = (
+            self.percentage_gap if self.percentage_gap is not None else 20
+        )
         self.max_points = self.max_points if self.max_points is not None else 50000
-        self.minimum_points = self.minimum_points if self.minimum_points is not None else 0
-        self.stealth_mode = self.stealth_mode if self.stealth_mode is not None else False
+        self.minimum_points = (
+            self.minimum_points if self.minimum_points is not None else 0
+        )
+        self.stealth_mode = (
+            self.stealth_mode if self.stealth_mode is not None else False
+        )
         self.delay = self.delay if self.delay is not None else 6
-        self.delay_mode = self.delay_mode if self.delay_mode is not None else DelayMode.FROM_END
+        self.delay_mode = (
+            self.delay_mode if self.delay_mode is not None else DelayMode.FROM_END
+        )
 
     def __repr__(self):
         return f"{type(self).__name__}({', '.join(f'{attr}={getattr(self, attr)}' for attr in self.__slots__)})"
@@ -264,6 +273,51 @@ class Bet(object):
         else:
             return False, 0  # Default don't skip the bet
 
+    def calculate(self, balance: int, title: str = None) -> dict:
+        self.decision = {"choice": None, "amount": None, "id": None}
+        is_event = False
+
+        if title is not None:
+            for event in self.settings.events:
+                if re.search(event.title, title, re.IGNORECASE):
+                    self.chance_amount_calculations(
+                        balance,
+                        event.chance,
+                        odds_labels=event.odds_labels,
+                        percentage_labels=event.percentage_labels,
+                        max_points=event.max_points,
+                        strict=event.strict,
+                        title=title,
+                    )
+                    is_event = True
+                    break
+        else:
+            logger.warning("Missing Title", {"color": Settings.logger.color_palette.BET_FAILED})
+
+        if not is_event:
+            if self.settings.strategy == Strategy.MOST_VOTED:
+                self.decision["choice"] = self.__return_choice(OutcomeKeys.TOTAL_USERS)
+            elif self.settings.strategy == Strategy.HIGH_ODDS:
+                self.odds_strategy(balance)
+            elif self.settings.strategy == Strategy.PERCENTAGE:
+                self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS_PERCENTAGE)
+            elif self.settings.strategy == Strategy.SMART:
+                self.smart_strategy(balance)
+
+        if self.decision["choice"] is not None:
+            index = char_decision_as_index(self.decision["choice"])
+            self.decision["id"] = self.outcomes[index]["id"]
+            if not self.decision["amount"]:
+                total_points = self.outcomes[0][OutcomeKeys.TOTAL_POINTS] + self.outcomes[1][OutcomeKeys.TOTAL_POINTS]
+                self.decision["amount"] = int(min(balance, total_points) * (self.settings.percentage / 100))
+            self.decision["amount"] = max(self.decision["amount"], self.settings.minimum_points)
+            if not is_event:
+                self.decision["amount"] = min(self.decision["amount"], self.settings.max_points)
+            if self.settings.stealth_mode is True:
+                self.decision["amount"] = min(self.decision["amount"], self.outcomes[index][OutcomeKeys.TOP_POINTS] - 1)
+            self.decision["amount"] = int(min(self.decision["amount"], balance))
+        return self.decision
+
     def odds_strategy(self, balance: int) -> None:
         if self.outcomes[0][OutcomeKeys.ODDS] > self.outcomes[1][OutcomeKeys.ODDS]:
             odds, percentage, odds_choice = self.outcomes[0], self.outcomes[1], "A"
@@ -371,48 +425,3 @@ class Bet(object):
         if max_points is not None:
             self.decision["amount"] = min(self.decision["amount"], max_points / c)  # c = choice_odds
         self.decision["amount"] = int(min(self.decision["amount"], balance / c))
-
-    def calculate(self, balance: int, title: str = None) -> dict:
-        self.decision = {"choice": None, "amount": None, "id": None}
-        is_event = False
-
-        if title is not None:
-            for event in self.settings.events:
-                if re.search(event.title, title, re.IGNORECASE):
-                    self.chance_amount_calculations(
-                        balance,
-                        event.chance,
-                        odds_labels=event.odds_labels,
-                        percentage_labels=event.percentage_labels,
-                        max_points=event.max_points,
-                        strict=event.strict,
-                        title=title,
-                    )
-                    is_event = True
-                    break
-        else:
-            logger.warning("Missing Title", {"color": Settings.logger.color_palette.BET_FAILED})
-
-        if not is_event:
-            if self.settings.strategy == Strategy.MOST_VOTED:
-                self.decision["choice"] = self.__return_choice(OutcomeKeys.TOTAL_USERS)
-            elif self.settings.strategy == Strategy.HIGH_ODDS:
-                self.odds_strategy(balance)
-            elif self.settings.strategy == Strategy.PERCENTAGE:
-                self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS_PERCENTAGE)
-            elif self.settings.strategy == Strategy.SMART:
-                self.smart_strategy(balance)
-
-        if self.decision["choice"] is not None:
-            index = char_decision_as_index(self.decision["choice"])
-            self.decision["id"] = self.outcomes[index]["id"]
-            if not self.decision["amount"]:
-                total_points = self.outcomes[0][OutcomeKeys.TOTAL_POINTS] + self.outcomes[1][OutcomeKeys.TOTAL_POINTS]
-                self.decision["amount"] = int(min(balance, total_points) * (self.settings.percentage / 100))
-            self.decision["amount"] = max(self.decision["amount"], self.settings.minimum_points)
-            if not is_event:
-                self.decision["amount"] = min(self.decision["amount"], self.settings.max_points)
-            if self.settings.stealth_mode is True:
-                self.decision["amount"] = min(self.decision["amount"], self.outcomes[index][OutcomeKeys.TOP_POINTS] - 1)
-            self.decision["amount"] = int(min(self.decision["amount"], balance))
-        return self.decision
