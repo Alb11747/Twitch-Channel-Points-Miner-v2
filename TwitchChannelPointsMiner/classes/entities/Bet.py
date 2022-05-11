@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Union
+from typing import Callable, Union
 import logging
 import copy
 import math
@@ -74,7 +74,7 @@ class FilterCondition(object):
 
 
 class BetEvent(object):
-    __slots__ = ["title", "chance", "odds_labels", "percentage_labels", "max_points", "strict"]
+    __slots__ = ["title", "chance", "odds_labels", "percentage_labels", "max_points", "strict", "filter"]
 
     def __init__(
         self,
@@ -84,6 +84,7 @@ class BetEvent(object):
         percentage_labels: Union[str, list] = [],
         max_points: int = None,
         strict: bool = True,
+        filter: Callable[["Bet"], bool] = None,
     ):
         self.title = title
         self.chance = chance
@@ -91,6 +92,7 @@ class BetEvent(object):
         self.percentage_labels = percentage_labels
         self.max_points = max_points
         self.strict = strict
+        self.filter = filter
 
     def __repr__(self):
         return f"{type(self).__name__}({', '.join(f'{attr}={getattr(self, attr)}' for attr in self.__slots__)})"
@@ -164,7 +166,7 @@ class BetSettings(object):
 class Bet(object):
     __slots__ = ["outcomes", "decision", "total_users", "total_points", "settings"]
 
-    def __init__(self, outcomes: list, settings: BetSettings, title: str = ""):
+    def __init__(self, outcomes: list, settings: BetSettings):
         self.outcomes = outcomes
         self.__clear_outcomes()
         self.decision: dict = {}
@@ -275,11 +277,27 @@ class Bet(object):
 
     def calculate(self, balance: int, title: str = None) -> dict:
         self.decision = {"choice": None, "amount": None, "id": None}
-        is_event = False
+        
+        if self.outcomes[0][OutcomeKeys.TOTAL_POINTS] == 0 and self.outcomes[1][OutcomeKeys.TOTAL_POINTS] == 0:
+            return self.decision
+        elif self.outcomes[0][OutcomeKeys.TOTAL_POINTS] == 0:
+            self.decision["choice"] = "A"
+            self.decision["amount"] = min(self.outcomes[1][OutcomeKeys.TOTAL_POINTS], 10)
+            self.decision["id"] = self.outcomes[0]["id"]
+            return self.decision
+        elif self.outcomes[1][OutcomeKeys.TOTAL_POINTS] == 0:
+            self.decision["choice"] = "B"
+            self.decision["amount"] = min(self.outcomes[0][OutcomeKeys.TOTAL_POINTS], 10)
+            self.decision["id"] = self.outcomes[1]["id"]
+            return self.decision
 
+        is_event = False
         if title is not None:
             for event in self.settings.events:
-                if re.search(event.title, title, re.IGNORECASE):
+                if (isinstance(event.title, str) and re.search(event.title, title, re.IGNORECASE) or
+                    callable(event.title) and event.title(title)):
+                    if event.filter is not None and not event.filter(self):
+                        continue
                     self.chance_amount_calculations(
                         balance,
                         event.chance,
@@ -315,7 +333,7 @@ class Bet(object):
                 self.decision["amount"] = min(self.decision["amount"], self.settings.max_points)
             if self.settings.stealth_mode is True:
                 self.decision["amount"] = min(self.decision["amount"], self.outcomes[index][OutcomeKeys.TOP_POINTS] - 1)
-            self.decision["amount"] = int(min(self.decision["amount"], balance))
+            self.decision["amount"] = int(min(self.decision["amount"], balance, 250000))
         return self.decision
 
     def odds_strategy(self, balance: int) -> None:

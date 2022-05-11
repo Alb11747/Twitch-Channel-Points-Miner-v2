@@ -318,6 +318,7 @@ class WebSocketsPool:
                             if (
                                 message.type == "prediction-result"
                                 and event_prediction.bet_confirmed
+                                and event_prediction.bet.decision
                             ):
                                 points = event_prediction.parse_result(
                                     message.data["prediction"]["result"]
@@ -364,10 +365,11 @@ class WebSocketsPool:
                                     )
                             elif message.type == "prediction-made":
                                 event_prediction.bet_confirmed = True
-                                ws.streamers[streamer_index].persistent_annotations(
-                                    "PREDICTION_MADE",
-                                    f"Decision: {event_prediction.bet.decision['choice']} - {event_prediction.title}",
-                                )
+                                if event_prediction.bet.decision:
+                                    ws.streamers[streamer_index].persistent_annotations(
+                                        "PREDICTION_MADE",
+                                        f"Decision: {event_prediction.bet.decision['choice']} - {event_prediction.title}",
+                                    )
                 except Exception:
                     logger.error(
                         f"Exception raised for topic: {message.topic} and message: {message}",

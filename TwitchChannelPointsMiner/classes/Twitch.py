@@ -428,6 +428,16 @@ class Twitch(object):
                 self.claim_bonus(streamer, community_points["availableClaim"]["id"])
 
     def make_predictions(self, event):
+        if event.bet_confirmed is True:
+            logger.info(
+                f"Bet won't be placed as a decision has already been made for {event}",
+                extra={
+                    "emoji": ":four_leaf_clover:",
+                    "event": Events.BET_GENERAL,
+                },
+            )
+            return
+
         decision = event.bet.calculate(event.streamer.channel_points, event.title)
         selector_index = 0 if decision["choice"] == "A" else 1
 
@@ -456,7 +466,7 @@ class Twitch(object):
                     },
                 )
             else:
-                if decision["amount"] >= 10:
+                if decision["amount"] > 0:
                     logger.info(
                         f"Place {_millify(decision['amount'])} channel points on: {event.bet.get_outcome(selector_index)}",
                         extra={
@@ -476,10 +486,9 @@ class Twitch(object):
                     }
                     response = self.post_gql_request(json_data)
                     if (
-                        "data" in response
-                        and "makePrediction" in response["data"]
-                        and "error" in response["data"]["makePrediction"]
-                        and response["data"]["makePrediction"]["error"] is not None
+                        response.get("data", None) is not None
+                        and response["data"].get("makePrediction", None) is not None
+                        and response["data"]["makePrediction"].get("error", None) is not None
                     ):
                         error_code = response["data"]["makePrediction"]["error"]["code"]
                         logger.error(
@@ -491,7 +500,7 @@ class Twitch(object):
                         )
                 else:
                     logger.info(
-                        f"Bet won't be placed as the amount {_millify(decision['amount'])} is less than the minimum required 10",
+                        f"Bet won't be placed as the amount {_millify(decision['amount'])} is less than or equal to 0",
                         extra={
                             "emoji": ":four_leaf_clover:",
                             "event": Events.BET_GENERAL,
