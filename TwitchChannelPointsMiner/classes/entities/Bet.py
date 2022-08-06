@@ -1,15 +1,14 @@
-from enum import Enum, auto
-import random
-from typing import Callable, Union
-import logging
 import copy
+import logging
 import math
+import random
 import re
+from enum import Enum, auto
+from typing import Callable
 
 from millify import millify
-
 from TwitchChannelPointsMiner.classes.Settings import Settings
-from TwitchChannelPointsMiner.utils import char_decision_as_index, float_round
+from TwitchChannelPointsMiner.utils import float_round
 
 logger = logging.getLogger(__name__)
 
