@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import random
-from typing import Callable, Union
+from typing import Callable
 import logging
 import copy
 import math
