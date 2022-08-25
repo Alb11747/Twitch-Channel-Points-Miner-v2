@@ -1,15 +1,13 @@
-from enum import Enum, auto
-import random
-from typing import Callable
-import logging
 import copy
+import logging
 import math
+import random
 import re
+from enum import Enum, auto
+from typing import Callable
 
 from millify import millify
-
 from TwitchChannelPointsMiner.classes.Settings import Settings
-from TwitchChannelPointsMiner.utils import float_round
 
 logger = logging.getLogger(__name__)
 
@@ -395,7 +393,7 @@ class Bet(object):
             bet_amount = min(bet_amount, math.sqrt(-(c - 1) * o * (o - t)) / (c - 1) - o, 250000)
 
             odds_after_bet = (self.total_points + bet_amount) / (outcome[OutcomeKeys.TOTAL_POINTS] + bet_amount)
-            expected_value = (odds_after_bet * bet_amount - bet_amount) * outcome_chances[i] - bet_amount * (1 - outcome_chances[i])
+            expected_value = odds_after_bet * bet_amount * outcome_chances[i] - bet_amount
 
             if expected_value > max_expected_value:
                 decision = (i, bet_amount)
