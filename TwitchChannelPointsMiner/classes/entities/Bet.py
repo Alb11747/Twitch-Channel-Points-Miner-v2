@@ -196,12 +196,12 @@ class Bet(object):
 
         if self.total_users > 0 and self.total_points > 0:
             for outcome in self.outcomes:
-                outcome[OutcomeKeys.PERCENTAGE_USERS] = float_round((100 * outcome[OutcomeKeys.TOTAL_USERS]) / self.total_users)
-                outcome[OutcomeKeys.ODDS_PERCENTAGE] = float_round(100 * outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points)
+                outcome[OutcomeKeys.PERCENTAGE_USERS] = (100 * outcome[OutcomeKeys.TOTAL_USERS]) / self.total_users
+                outcome[OutcomeKeys.ODDS_PERCENTAGE] = 100 * outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points
 
                 outcome_points = outcome[OutcomeKeys.TOTAL_POINTS]
                 if outcome_points > 0:
-                    outcome[OutcomeKeys.ODDS] = float_round(self.total_points / outcome_points)
+                    outcome[OutcomeKeys.ODDS] = self.total_points / outcome_points
 
         self.__clear_outcomes()
 
@@ -379,24 +379,33 @@ class Bet(object):
 
         for i in range(len(outcome_chances)):
             outcome_chances[i] /= total_chance
-        max_bet, max_amount = None, 0
+        decision, max_expected_value = None, 0
 
         for i, outcome in enumerate(self.outcomes):
             if outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points >= outcome_chances[i]:
                 continue
 
+            t, o, c = self.total_points, outcome[OutcomeKeys.TOTAL_POINTS], 1 / outcome_chances[i]
+            
             # Account for Bet amount and scale based on difference of actual chance and bet reward
             p = balance * (self.settings.event_percentage / 100) * (outcome_chances[i] ** 2)
-            t, o, c = self.total_points, outcome[OutcomeKeys.TOTAL_POINTS], 1 / outcome_chances[i]
             bet_amount = (math.sqrt((c * p + o - p) ** 2 - 4 * (c * o * p - p * t)) - c * p - o + p) / 2
 
-            if bet_amount > max_amount:
-                max_bet = i
-                max_amount = bet_amount
+            # Limit bet amount to bet with max expected value and twitch limit
+            bet_amount = min(bet_amount, math.sqrt(-(c - 1) * o * (o - t)) / (c - 1) - o, 250000)
 
-        self.decision["choice"] = max_bet
-        self.decision["amount"] = max_amount
+            odds_after_bet = (self.total_points + bet_amount) / (outcome[OutcomeKeys.TOTAL_POINTS] + bet_amount)
+            expected_value = (odds_after_bet * bet_amount - bet_amount) * outcome_chances[i] - bet_amount * (1 - outcome_chances[i])
 
+            if expected_value > max_expected_value:
+                decision = (i, bet_amount)
+                max_expected_value = expected_value
+        
+        if decision is None:
+            logger.error("No profitable outcome found", failed_logger_extra)
+            return True
+
+        self.decision["choice"], self.decision["amount"] = decision
         if event.max_points is not None:
             self.decision["amount"] = min(self.decision["amount"], event.max_points * outcome_chances[i])
         self.decision["amount"] = min(self.decision["amount"], balance * outcome_chances[i])
