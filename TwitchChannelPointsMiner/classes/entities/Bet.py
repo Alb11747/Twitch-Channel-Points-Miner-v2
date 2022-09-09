@@ -213,7 +213,7 @@ class Bet(object):
 
     @staticmethod
     def __parse_outcome(outcome):
-        return f"{outcome['title']} ({outcome['color']}), Points: {millify(outcome[OutcomeKeys.TOTAL_POINTS])}, Users: {millify(outcome[OutcomeKeys.TOTAL_USERS])} ({outcome[OutcomeKeys.PERCENTAGE_USERS]}%), Odds: {outcome[OutcomeKeys.ODDS]} ({outcome[OutcomeKeys.ODDS_PERCENTAGE]}%)"
+        return f"{outcome['title']} ({outcome['color']}), Points: {millify(outcome[OutcomeKeys.TOTAL_POINTS])}, Users: {millify(outcome[OutcomeKeys.TOTAL_USERS])} ({outcome[OutcomeKeys.PERCENTAGE_USERS]:.2f}%), Odds: {outcome[OutcomeKeys.ODDS]:.2f} ({outcome[OutcomeKeys.ODDS_PERCENTAGE]:.2f}%)"
 
     def get_outcome(self, index):
         return Bet.__parse_outcome(self.outcomes[index])
@@ -384,7 +384,7 @@ class Bet(object):
                 continue
 
             t, o, c = self.total_points, outcome[OutcomeKeys.TOTAL_POINTS], 1 / outcome_chances[i]
-            
+
             # Account for Bet amount and scale based on difference of actual chance and bet reward
             p = balance * (self.settings.event_percentage / 100) * (outcome_chances[i] ** 2)
             bet_amount = (math.sqrt((c * p + o - p) ** 2 - 4 * (c * o * p - p * t)) - c * p - o + p) / 2
@@ -398,7 +398,7 @@ class Bet(object):
             if expected_value > max_expected_value:
                 decision = (i, bet_amount)
                 max_expected_value = expected_value
-        
+
         if decision is None:
             logger.error("No profitable outcome found", failed_logger_extra)
             return True
