@@ -9,7 +9,7 @@ from dateutil import parser
 from TwitchChannelPointsMiner.classes.entities.EventPrediction import EventPrediction
 from TwitchChannelPointsMiner.classes.entities.Message import Message
 from TwitchChannelPointsMiner.classes.entities.Raid import Raid
-from TwitchChannelPointsMiner.classes.Settings import Events
+from TwitchChannelPointsMiner.classes.Settings import Events, Settings
 from TwitchChannelPointsMiner.classes.TwitchWebSocket import TwitchWebSocket
 from TwitchChannelPointsMiner.constants import WEBSOCKET
 from TwitchChannelPointsMiner.utils import (
@@ -52,7 +52,8 @@ class WebSocketsPool:
         if self.ws[index].is_opened is False:
             self.ws[index].pending_topics.append(topic)
         else:
-            self.ws[index].listen(topic, self.twitch.twitch_login.get_auth_token())
+            self.ws[index].listen(
+                topic, self.twitch.twitch_login.get_auth_token())
 
     def __new(self, index):
         return TwitchWebSocket(
@@ -67,7 +68,13 @@ class WebSocketsPool:
         )
 
     def __start(self, index):
-        thread_ws = Thread(target=lambda: self.ws[index].run_forever())
+        if Settings.disable_ssl_cert_verification is True:
+            import ssl
+            thread_ws = Thread(target=lambda: self.ws[index].run_forever(
+                sslopt={"cert_reqs": ssl.CERT_NONE}))
+            logger.warn("SSL certificate verification is disabled! Be aware!")
+        else:
+            thread_ws = Thread(target=lambda: self.ws[index].run_forever())
         thread_ws.daemon = True
         thread_ws.name = f"WebSocket #{self.ws[index].index}"
         thread_ws.start()
@@ -141,7 +148,8 @@ class WebSocketsPool:
 
             # Why not create a new ws on the same array index? Let's try.
             self = ws.parent_pool
-            self.ws[ws.index] = self.__new(ws.index)  # Create a new connection.
+            # Create a new connection.
+            self.ws[ws.index] = self.__new(ws.index)
 
             self.__start(ws.index)  # Start a new thread.
             time.sleep(30)
@@ -171,18 +179,21 @@ class WebSocketsPool:
             ws.last_message_timestamp = message.timestamp
             ws.last_message_type_channel = message.identifier
 
-            streamer_index = get_streamer_index(ws.streamers, message.channel_id)
+            streamer_index = get_streamer_index(
+                ws.streamers, message.channel_id)
             if streamer_index != -1:
                 try:
                     if message.topic == "community-points-user-v1":
                         if message.type in ["points-earned", "points-spent"]:
                             balance = message.data["balance"]["balance"]
                             ws.streamers[streamer_index].channel_points = balance
-                            ws.streamers[streamer_index].persistent_series(
-                                event_type=message.data["point_gain"]["reason_code"]
-                                if message.type == "points-earned"
-                                else "Spent"
-                            )
+                            # Analytics switch
+                            if Settings.enable_analytics is True:
+                                ws.streamers[streamer_index].persistent_series(
+                                    event_type=message.data["point_gain"]["reason_code"]
+                                    if message.type == "points-earned"
+                                    else "Spent"
+                                )
 
                         if message.type == "points-earned":
                             earned = message.data["point_gain"]["total_points"]
@@ -198,9 +209,11 @@ class WebSocketsPool:
                             ws.streamers[streamer_index].update_history(
                                 reason_code, earned
                             )
-                            ws.streamers[streamer_index].persistent_annotations(
-                                reason_code, f"+{earned} - {reason_code}"
-                            )
+                            # Analytics switch
+                            if Settings.enable_analytics is True:
+                                ws.streamers[streamer_index].persistent_annotations(
+                                    reason_code, f"+{earned} - {reason_code}"
+                                )
                         elif message.type == "claim-available":
                             ws.twitch.claim_bonus(
                                 ws.streamers[streamer_index],
@@ -226,7 +239,8 @@ class WebSocketsPool:
                                 message.message["raid"]["id"],
                                 message.message["raid"]["target_login"],
                             )
-                            ws.twitch.update_raid(ws.streamers[streamer_index], raid)
+                            ws.twitch.update_raid(
+                                ws.streamers[streamer_index], raid)
 
                     elif message.topic == "predictions-channel-v1":
 
@@ -359,13 +373,16 @@ class WebSocketsPool:
                                     )
 
                                 if event_prediction.result["type"] != "LOSE":
-                                    ws.streamers[streamer_index].persistent_annotations(
-                                        event_prediction.result["type"],
-                                        f"{ws.events_predictions[event_id].title}",
-                                    )
+                                    # Analytics switch
+                                    if Settings.enable_analytics is True:
+                                        ws.streamers[streamer_index].persistent_annotations(
+                                            event_prediction.result["type"],
+                                            f"{ws.events_predictions[event_id].title}",
+                                        )
                             elif message.type == "prediction-made":
                                 event_prediction.bet_confirmed = True
-                                if event_prediction.bet.decision:
+                                # Analytics switch
+                                if Settings.enable_analytics is True and event_prediction.bet.decision:
                                     ws.streamers[streamer_index].persistent_annotations(
                                         "PREDICTION_MADE",
                                         f"Decision: {event_prediction.bet.decision['choice']} - {event_prediction.title}",
@@ -377,7 +394,8 @@ class WebSocketsPool:
                     )
 
         elif response["type"] == "RESPONSE" and len(response.get("error", "")) > 0:
-            raise RuntimeError(f"Error while trying to listen for a topic: {response}")
+            raise RuntimeError(
+                f"Error while trying to listen for a topic: {response}")
 
         elif response["type"] == "RECONNECT":
             logger.info(f"#{ws.index} - Reconnection required")

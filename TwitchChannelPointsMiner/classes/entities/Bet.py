@@ -4,10 +4,12 @@ import math
 import random
 import re
 from enum import Enum, auto
-from typing import Callable
+from typing import Any, Callable, Optional
 
 from millify import millify
+
 from TwitchChannelPointsMiner.classes.Settings import Settings
+from TwitchChannelPointsMiner.utils import float_round
 
 logger = logging.getLogger(__name__)
 
@@ -63,25 +65,37 @@ class FilterCondition(object):
         "value",
     ]
 
-    def __init__(self, by=None, where=None, value=None):
+    def __init__(
+        self,
+        by: OutcomeKeys,
+        where: Condition,
+        value: float,
+    ):
         self.by = by
         self.where = where
         self.value = value
 
     def __repr__(self):
-        return f"FilterCondition(by={self.by.upper()}, where={self.where}, value={self.value})"
+        return f"FilterCondition(by={str(self.by).upper()}, where={self.where}, value={self.value})"
 
 
 class BetEvent(object):
-    __slots__ = ["title", "event_chances", "max_points", "strict", "filter", "regex_flags"]
+    __slots__ = [
+        "title",
+        "event_chances",
+        "max_points",
+        "strict",
+        "filter",
+        "regex_flags",
+    ]
 
     def __init__(
         self,
         title: str,
         event_chances: dict[str, float],
-        max_points: int = None,
+        max_points: Optional[int] = None,
         strict: bool = True,
-        filter: Callable[["Bet"], bool] = None,
+        filter: Optional[Callable[["Bet"], bool]] = None,
         regex_flags: re.RegexFlag = re.IGNORECASE,
     ):
         """
@@ -123,61 +137,87 @@ class BetSettings(object):
 
     def __init__(
         self,
-        strategy: Strategy = None,
-        percentage: int = None,
-        percentage_gap: int = None,
-        events: list[BetEvent] = None,
-        event_percentage: int = None,
-        max_points: int = None,
-        minimum_points: int = None,
-        stealth_mode: bool = None,
-        filter_condition: FilterCondition = None,
-        delay: float = None,
-        delay_mode: DelayMode = None,
+        strategy: Optional[Strategy] = None,
+        percentage: Optional[int] = None,
+        percentage_gap: Optional[int] = None,
+        events: Optional[list[BetEvent]] = None,
+        event_percentage: Optional[int] = None,
+        max_points: Optional[int] = None,
+        minimum_points: Optional[int] = None,
+        stealth_mode: Optional[bool] = None,
+        filter_condition: Optional[FilterCondition] = None,
+        delay: Optional[float] = None,
+        delay_mode: Optional[DelayMode] = None,
     ):
-        self.strategy = strategy
-        self.percentage = percentage
-        self.percentage_gap = percentage_gap
-        self.events = events
-        self.event_percentage = event_percentage
-        self.max_points = max_points
-        self.minimum_points = minimum_points
-        self.stealth_mode = stealth_mode
-        self.filter_condition = filter_condition
-        self.delay = delay
-        self.delay_mode = delay_mode
+        self.strategy: Strategy = strategy  # type: ignore
+        self.percentage: int = percentage  # type: ignore
+        self.percentage_gap: int = percentage_gap  # type: ignore
+        self.events: list[BetEvent] = events  # type: ignore
+        self.event_percentage: int = event_percentage  # type: ignore
+        self.max_points: int = max_points  # type: ignore
+        self.minimum_points: int = minimum_points  # type: ignore
+        self.stealth_mode: bool = stealth_mode  # type: ignore
+        self.filter_condition: FilterCondition = filter_condition  # type: ignore
+        self.delay: float = delay  # type: ignore
+        self.delay_mode: DelayMode = delay_mode  # type: ignore
 
     def default(self):
-        self.strategy = self.strategy if self.strategy is not None else Strategy.SMART
+        self.strategy = (
+            self.strategy if self.strategy is not None else Strategy.SMART
+        )
         self.percentage = self.percentage if self.percentage is not None else 5
         self.events = self.events if self.events is not None else []
-        self.event_percentage = self.event_percentage if self.event_percentage is not None else 20
-        self.percentage_gap = self.percentage_gap if self.percentage_gap is not None else 20
-        self.max_points = self.max_points if self.max_points is not None else 50000
-        self.minimum_points = self.minimum_points if self.minimum_points is not None else 0
-        self.stealth_mode = self.stealth_mode if self.stealth_mode is not None else False
+        self.event_percentage = (
+            self.event_percentage if self.event_percentage is not None else 20
+        )
+        self.percentage_gap = (
+            self.percentage_gap if self.percentage_gap is not None else 20
+        )
+        self.max_points = (
+            self.max_points if self.max_points is not None else 50000
+        )
+        self.minimum_points = (
+            self.minimum_points if self.minimum_points is not None else 0
+        )
+        self.stealth_mode = (
+            self.stealth_mode if self.stealth_mode is not None else False
+        )
         self.delay = self.delay if self.delay is not None else 6
-        self.delay_mode = self.delay_mode if self.delay_mode is not None else DelayMode.FROM_END
+        self.delay_mode = (
+            self.delay_mode
+            if self.delay_mode is not None
+            else DelayMode.FROM_END
+        )
 
     def __repr__(self):
         return f"{type(self).__name__}({', '.join(f'{attr}={getattr(self, attr)}' for attr in self.__slots__)})"
 
 
 class Bet(object):
-    __slots__ = ["outcomes", "decision", "total_users", "total_points", "settings"]
+    __slots__ = [
+        "outcomes",
+        "decision",
+        "total_users",
+        "total_points",
+        "settings",
+    ]
 
-    def __init__(self, outcomes: list, settings: BetSettings):
+    def __init__(self, outcomes: list[dict[str, Any]], settings: BetSettings):
         self.outcomes = outcomes
         self.__clear_outcomes()
-        self.decision: dict = {}
+        self.decision: dict[str, Any] = {}
         self.total_users = 0
         self.total_points = 0
         self.settings = settings
 
     def update_outcomes(self, outcomes):
         for i, outcome in enumerate(self.outcomes):
-            outcome[OutcomeKeys.TOTAL_USERS] = int(outcomes[i][OutcomeKeys.TOTAL_USERS])
-            outcome[OutcomeKeys.TOTAL_POINTS] = int(outcomes[i][OutcomeKeys.TOTAL_POINTS])
+            outcome[OutcomeKeys.TOTAL_USERS] = int(
+                outcomes[i][OutcomeKeys.TOTAL_USERS]
+            )
+            outcome[OutcomeKeys.TOTAL_POINTS] = int(
+                outcomes[i][OutcomeKeys.TOTAL_POINTS]
+            )
             if outcomes[i]["top_predictors"] != []:
                 # Sort by points placed by other users
                 outcomes[i]["top_predictors"] = sorted(
@@ -189,22 +229,35 @@ class Bet(object):
                 top_points = outcomes[i]["top_predictors"][0]["points"]
                 outcome[OutcomeKeys.TOP_POINTS] = top_points
 
-        self.total_users = sum(outcome[OutcomeKeys.TOTAL_USERS] for outcome in self.outcomes)
-        self.total_points = sum(outcome[OutcomeKeys.TOTAL_POINTS] for outcome in self.outcomes)
+        self.total_users = sum(
+            outcome[OutcomeKeys.TOTAL_USERS] for outcome in self.outcomes
+        )
+        self.total_points = sum(
+            outcome[OutcomeKeys.TOTAL_POINTS] for outcome in self.outcomes
+        )
 
         if self.total_users > 0 and self.total_points > 0:
             for outcome in self.outcomes:
-                outcome[OutcomeKeys.PERCENTAGE_USERS] = (100 * outcome[OutcomeKeys.TOTAL_USERS]) / self.total_users
-                outcome[OutcomeKeys.ODDS_PERCENTAGE] = 100 * outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points
+                outcome[OutcomeKeys.PERCENTAGE_USERS] = (
+                    100 * outcome[OutcomeKeys.TOTAL_USERS] / self.total_users
+                )
+                outcome[OutcomeKeys.ODDS_PERCENTAGE] = (
+                    100 * outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points
+                )
 
                 outcome_points = outcome[OutcomeKeys.TOTAL_POINTS]
                 if outcome_points > 0:
-                    outcome[OutcomeKeys.ODDS] = self.total_points / outcome_points
+                    outcome[OutcomeKeys.ODDS] = (
+                        self.total_points / outcome_points
+                    )
 
         self.__clear_outcomes()
 
     def __repr__(self):
-        outcome_str = "".join(f"\n\t\tOutcome {chr(ord('A') + i)}({self.get_outcome(i)})" for i in range(len(self.outcomes)))
+        outcome_str = "".join(
+            f"\n\t\tOutcome {chr(ord('A') + i)}({self.get_outcome(i)})"
+            for i in range(len(self.outcomes))
+        )
         return f"Bet(total_users={millify(self.total_users)}, total_points={millify(self.total_points)}), decision={self.decision}){outcome_str}"
 
     def get_decision(self, parsed=False):
@@ -243,21 +296,31 @@ class Bet(object):
                 if key not in self.outcomes[index]:
                     self.outcomes[index][key] = 0
 
-    def __return_choice(self, key) -> str:
-        return max(range(len(self.outcomes)), key=lambda i: self.outcomes[i][key])
+    def __return_choice(self, key) -> int:
+        return max(
+            range(len(self.outcomes)), key=lambda i: self.outcomes[i][key]
+        )
 
-    def skip(self) -> bool:
+    def skip(self) -> tuple[bool, float]:
         if self.settings.filter_condition is not None:
             # key == by , condition == where
-            key = self.settings.filter_condition.by
+            key = str(self.settings.filter_condition.by)
             condition = self.settings.filter_condition.where
             value = self.settings.filter_condition.value
 
-            fixed_key = key if key not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS] else key.replace("decision", "total")
+            fixed_key = (
+                key
+                if key
+                not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS]
+                else key.replace("decision", "total")
+            )
             if key in [OutcomeKeys.TOTAL_USERS, OutcomeKeys.TOTAL_POINTS]:
-                compared_value = sum(outcome[fixed_key] for outcome in self.outcomes)
+                compared_value = sum(
+                    outcome[fixed_key] for outcome in self.outcomes
+                )
             else:
-                compared_value = self.outcomes[self.decision["choice"]][fixed_key]
+                outcome_index = self.decision["choice"]
+                compared_value = self.outcomes[outcome_index][fixed_key]
 
             # Check if condition is satisfied
             if condition == Condition.GT:
@@ -276,16 +339,25 @@ class Bet(object):
         else:
             return False, 0  # Default don't skip the bet
 
-    def calculate(self, balance: int, title: str = None) -> dict:
-        self.decision = {"choice": None, "amount": None, "id": None}
+    def calculate(self, balance: int, title: Optional[str] = None) -> dict:
+        self.decision = {
+            "choice": None,
+            "amount": None,
+            "id": None,
+        }
 
-        if all(outcome[OutcomeKeys.TOTAL_POINTS] == 0 for outcome in self.outcomes):
+        if all(
+            outcome[OutcomeKeys.TOTAL_POINTS] == 0 for outcome in self.outcomes
+        ):
             return self.decision
 
         is_event = False
         if title is None:
-            logger.warning("Missing Title", {"color": Settings.logger.color_palette.BET_FAILED})
-        else:
+            logger.warning(
+                "Missing Title",
+                {"color": Settings.logger.color_palette.BET_FAILED},
+            )
+        elif self.settings.events is not None:
             for event in self.settings.events:
                 if (
                     isinstance(event.title, str)
@@ -300,40 +372,59 @@ class Bet(object):
                         break
 
         if not is_event:
-            # Choose random empty outcome
-            if any(outcome[OutcomeKeys.TOTAL_POINTS] == 0 for outcome in self.outcomes):
-                self.decision["choice"] = random.choice(
-                    list(filter(lambda i: self.outcomes[i][OutcomeKeys.TOTAL_POINTS] == 0, range(len(self.outcomes))))
+            if self.settings.strategy == Strategy.MOST_VOTED:
+                self.decision["choice"] = self.__return_choice(
+                    OutcomeKeys.TOTAL_USERS
                 )
-
-            elif self.settings.strategy == Strategy.MOST_VOTED:
-                self.decision["choice"] = self.__return_choice(OutcomeKeys.TOTAL_USERS)
             elif self.settings.strategy == Strategy.HIGH_ODDS:
                 self.odds_strategy(balance)
             elif self.settings.strategy == Strategy.PERCENTAGE:
-                self.decision["choice"] = self.__return_choice(OutcomeKeys.ODDS_PERCENTAGE)
+                self.decision["choice"] = self.__return_choice(
+                    OutcomeKeys.ODDS_PERCENTAGE
+                )
             elif self.settings.strategy == Strategy.SMART:
                 self.smart_strategy(balance)
 
         if self.decision["choice"] is not None:
             self.decision["id"] = self.outcomes[self.decision["choice"]]["id"]
             if not self.decision["amount"]:
-                self.decision["amount"] = min(balance, self.total_points) * (self.settings.percentage / 100)
-            self.decision["amount"] = max(self.decision["amount"], self.settings.minimum_points)
+                self.decision["amount"] = min(balance, self.total_points) * (
+                    self.settings.percentage / 100
+                )
+            self.decision["amount"] = max(
+                self.decision["amount"], self.settings.minimum_points
+            )
             if not is_event:
-                self.decision["amount"] = min(self.decision["amount"], self.settings.max_points)
+                self.decision["amount"] = min(
+                    self.decision["amount"], self.settings.max_points
+                )
             if self.settings.stealth_mode is True:
-                self.decision["amount"] = min(self.decision["amount"], self.outcomes[self.decision["choice"]][OutcomeKeys.TOP_POINTS] - 1)
-            self.decision["amount"] = int(min(self.decision["amount"], balance, 250000))
+                self.decision["amount"] = min(
+                    self.decision["amount"],
+                    self.outcomes[self.decision["choice"]][
+                        OutcomeKeys.TOP_POINTS
+                    ]
+                    - 1,
+                )
+            self.decision["amount"] = int(
+                min(self.decision["amount"], balance, 250000)
+            )
         return self.decision
 
     def odds_strategy(self, balance: int) -> None:
-        first, second = sorted(range(len(self.outcomes)), key=lambda i: self.outcomes[i][OutcomeKeys.TOTAL_POINTS])[:2]
+        first, second = sorted(
+            range(len(self.outcomes)),
+            key=lambda i: self.outcomes[i][OutcomeKeys.TOTAL_POINTS],
+        )[:2]
         self.decision["choice"] = first
         self.decision["amount"] = int(
             min(  # Keep bet from changing which outcome has the highest odds
-                min(balance, self.total_points) * (self.settings.percentage / 100),
-                (self.outcomes[second][OutcomeKeys.TOTAL_POINTS] - self.outcomes[first][OutcomeKeys.TOTAL_POINTS])
+                min(balance, self.total_points)
+                * (self.settings.percentage / 100),
+                (
+                    self.outcomes[second][OutcomeKeys.TOTAL_POINTS]
+                    - self.outcomes[first][OutcomeKeys.TOTAL_POINTS]
+                )
                 * 0.5,  # (0-1) Buffer to prevent changing on the odds outcome
             )
         )
@@ -341,17 +432,29 @@ class Bet(object):
     def smart_strategy(self, balance: int) -> None:
         for i in range(len(self.outcomes)):
             for j in range(i + 1, len(self.outcomes)):
-                difference = abs(self.outcomes[i][OutcomeKeys.PERCENTAGE_USERS] - self.outcomes[j][OutcomeKeys.PERCENTAGE_USERS])
+                difference = abs(
+                    self.outcomes[i][OutcomeKeys.PERCENTAGE_USERS]
+                    - self.outcomes[j][OutcomeKeys.PERCENTAGE_USERS]
+                )
                 if difference > self.settings.percentage_gap:
-                    self.decision["choice"] = self.__return_choice(OutcomeKeys.PERCENTAGE_USERS)
+                    self.decision["choice"] = self.__return_choice(
+                        OutcomeKeys.PERCENTAGE_USERS
+                    )
                     return
         self.odds_strategy(balance)
 
     def event_strategy(self, balance: int, event: BetEvent) -> bool:
-        failed_logger_extra = {"color": Settings.logger.color_palette.BET_FAILED}
+        if self.settings.event_percentage is None:
+            return False
+
+        failed_logger_extra = {
+            "color": Settings.logger.color_palette.BET_FAILED
+        }
 
         if event.strict and len(self.outcomes) != len(event.event_chances):
-            logger.info("Event outcomes counts don't match", failed_logger_extra)
+            logger.info(
+                "Event outcomes counts don't match", failed_logger_extra
+            )
             return False
 
         total_chance = 0
@@ -361,7 +464,11 @@ class Bet(object):
         for i, decision_outcome in enumerate(self.outcomes):
             for event_outcome, chance in event.event_chances.items():
                 if event_outcome in available_event_chances:
-                    if re.search(event_outcome, decision_outcome["title"], flags=event.regex_flags):
+                    if re.search(
+                        event_outcome,
+                        decision_outcome["title"],
+                        flags=event.regex_flags,
+                    ):
                         if event.strict:
                             available_event_chances.remove(event_outcome)
                         outcome_chances[i] = chance
@@ -372,28 +479,55 @@ class Bet(object):
                 return False
 
         if event.strict and len(available_event_chances) > 0:
-            logger.info("Event outcomes left after matching", failed_logger_extra)
+            logger.info(
+                "Event outcomes left after matching", failed_logger_extra
+            )
             return False
 
         for i in range(len(outcome_chances)):
             outcome_chances[i] /= total_chance
-        decision, max_expected_value = None, 0
+        decision = None
+        max_expected_value = 0
 
         for i, outcome in enumerate(self.outcomes):
-            if outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points >= outcome_chances[i]:
+            if (
+                outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points
+                >= outcome_chances[i]
+            ):
                 continue
 
-            t, o, c = self.total_points, outcome[OutcomeKeys.TOTAL_POINTS], 1 / outcome_chances[i]
+            t, o, c = (
+                self.total_points,
+                outcome[OutcomeKeys.TOTAL_POINTS],
+                1 / outcome_chances[i],
+            )
 
             # Account for Bet amount and scale based on difference of actual chance and bet reward
-            p = balance * (self.settings.event_percentage / 100) * (outcome_chances[i] ** 2)
-            bet_amount = (math.sqrt((c * p + o - p) ** 2 - 4 * (c * o * p - p * t)) - c * p - o + p) / 2
+            p = (
+                balance
+                * (self.settings.event_percentage / 100)
+                * (outcome_chances[i] ** 2)
+            )
+            bet_amount = (
+                math.sqrt((c * p + o - p) ** 2 - 4 * (c * o * p - p * t))
+                - c * p
+                - o
+                + p
+            ) / 2
 
             # Limit bet amount to bet with max expected value and twitch limit
-            bet_amount = min(bet_amount, math.sqrt(-(c - 1) * o * (o - t)) / (c - 1) - o, 250000)
+            bet_amount = min(
+                bet_amount,
+                math.sqrt(-(c - 1) * o * (o - t)) / (c - 1) - o,
+                250000,
+            )
 
-            odds_after_bet = (self.total_points + bet_amount) / (outcome[OutcomeKeys.TOTAL_POINTS] + bet_amount)
-            expected_value = odds_after_bet * bet_amount * outcome_chances[i] - bet_amount
+            odds_after_bet = (self.total_points + bet_amount) / (
+                outcome[OutcomeKeys.TOTAL_POINTS] + bet_amount
+            )
+            expected_value = (
+                odds_after_bet * bet_amount * outcome_chances[i] - bet_amount
+            )
 
             if expected_value > max_expected_value:
                 decision = (i, bet_amount)
@@ -405,7 +539,11 @@ class Bet(object):
 
         self.decision["choice"], self.decision["amount"] = decision
         if event.max_points is not None:
-            self.decision["amount"] = min(self.decision["amount"], event.max_points * outcome_chances[i])
-        self.decision["amount"] = min(self.decision["amount"], balance * outcome_chances[i])
+            self.decision["amount"] = min(
+                self.decision["amount"], event.max_points * outcome_chances[decision[0]]
+            )
+        self.decision["amount"] = min(
+            self.decision["amount"], balance * outcome_chances[decision[0]]
+        )
 
         return True
