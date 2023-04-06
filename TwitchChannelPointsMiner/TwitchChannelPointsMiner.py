@@ -94,6 +94,25 @@ class TwitchChannelPointsMiner:
         # This disables certificate verification and allows the connection to proceed, but also makes it vulnerable to man-in-the-middle (MITM) attacks.
         Settings.disable_ssl_cert_verification = disable_ssl_cert_verification
 
+        import socket
+
+        def is_connected():
+            try:
+                # resolve the IP address of the Twitch.tv domain name
+                socket.gethostbyname("twitch.tv")
+                return True
+            except OSError:
+                pass
+            return False
+
+        # check for Twitch.tv connectivity every 5 seconds
+        error_printed = False
+        while not is_connected():
+            if not error_printed:
+                logger.error("Waiting for Twitch.tv connectivity...")
+                error_printed = True
+            time.sleep(5)
+
         # Analytics switch
         Settings.enable_analytics = enable_analytics
 
@@ -345,6 +364,12 @@ class TwitchChannelPointsMiner:
                 if streamer.settings.make_predictions is True:
                     self.ws_pool.submit(
                         PubsubTopic("predictions-channel-v1",
+                                    streamer=streamer)
+                    )
+
+                if streamer.settings.claim_moments is True:
+                    self.ws_pool.submit(
+                        PubsubTopic("community-moments-channel-v1",
                                     streamer=streamer)
                     )
 

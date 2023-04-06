@@ -11,12 +11,12 @@ import random
 import re
 import string
 import time
-from datetime import datetime
+# from datetime import datetime
 from pathlib import Path
 from secrets import choice, token_hex
 
-import json
-from base64 import urlsafe_b64decode
+# import json
+# from base64 import urlsafe_b64decode
 
 import requests
 
@@ -655,6 +655,21 @@ class Twitch(object):
         json_data = copy.deepcopy(GQLOperations.ClaimCommunityPoints)
         json_data["variables"] = {
             "input": {"channelID": streamer.channel_id, "claimID": claim_id}
+        }
+        self.post_gql_request(json_data)
+
+    # === MOMENTS === #
+    def claim_moment(self, streamer, moment_id):
+        if Settings.logger.less is False:
+            logger.info(
+                f"Claiming the moment for {streamer}!",
+                extra={"emoji": ":video_camera:",
+                       "event": Events.MOMENT_CLAIM},
+            )
+
+        json_data = copy.deepcopy(GQLOperations.CommunityMomentCallout_Claim)
+        json_data["variables"] = {
+            "input": {"momentID": moment_id}
         }
         self.post_gql_request(json_data)
 
