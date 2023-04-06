@@ -1,15 +1,13 @@
 import copy
 import logging
 import math
-import random
 import re
 from enum import Enum, auto
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from millify import millify
 
 from TwitchChannelPointsMiner.classes.Settings import Settings
-from TwitchChannelPointsMiner.utils import float_round
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +90,7 @@ class BetEvent(object):
     def __init__(
         self,
         title: str,
-        event_chances: dict[str, float],
+        event_chances: Union[dict[str, float], list[tuple[str, float]]],
         max_points: Optional[int] = None,
         strict: bool = True,
         filter: Optional[Callable[["Bet"], bool]] = None,
@@ -102,16 +100,30 @@ class BetEvent(object):
         Object that represents a bet event with a title regex and chances of each outcome.
 
         :param title: Regex for the title of the bet
-        :param event_chances: Dictionary of outcome labels and chances of each outcome
+        :param event_chances: Outcome labels and probabilities pairs. Can be a dict or a list of tuples.
         :param max_points: Chance normalized maximum points to place on the bet
         :param strict: If true, outcome labels must match exactly. Otherwise the same outcome label can be used multiple times and not all outcomes must be present
         :param filter: Function to filter the bets before placing them. Return True if the bet should be placed, False otherwise
         :param regex_flags: Flags to use when compiling the regex
+
+        Probability of the outcomes will be normalized to 1.
+
+        For bets based on order of outcomes, use ".*" as a wildcard for the outcome label in a list of tuples and set strict to True.
+        E.g The probability of the first outcome is 80% and the probability of the second outcome is 20%: [(".*", 0.8), (".*", 0.2)]
         """
 
+        try:
+            re.compile(title, regex_flags)
+        except re.error as e:
+            raise ValueError(f"Invalid regex for title: {title}") from e
+
+        if isinstance(event_chances, dict):
+            self.event_chances = list(event_chances.items())
+        else:
+            self.event_chances = event_chances
+
         self.title = title
-        self.event_chances = event_chances
-        self.max_points = max_points
+        self.max_points = int(max_points) if max_points is not None else None
         self.strict = strict
         self.filter = filter
         self.regex_flags = regex_flags
@@ -162,9 +174,7 @@ class BetSettings(object):
         self.delay_mode: DelayMode = delay_mode  # type: ignore
 
     def default(self):
-        self.strategy = (
-            self.strategy if self.strategy is not None else Strategy.SMART
-        )
+        self.strategy = self.strategy if self.strategy is not None else Strategy.SMART
         self.percentage = self.percentage if self.percentage is not None else 5
         self.events = self.events if self.events is not None else []
         self.event_percentage = (
@@ -173,9 +183,7 @@ class BetSettings(object):
         self.percentage_gap = (
             self.percentage_gap if self.percentage_gap is not None else 20
         )
-        self.max_points = (
-            self.max_points if self.max_points is not None else 50000
-        )
+        self.max_points = self.max_points if self.max_points is not None else 50000
         self.minimum_points = (
             self.minimum_points if self.minimum_points is not None else 0
         )
@@ -184,9 +192,7 @@ class BetSettings(object):
         )
         self.delay = self.delay if self.delay is not None else 6
         self.delay_mode = (
-            self.delay_mode
-            if self.delay_mode is not None
-            else DelayMode.FROM_END
+            self.delay_mode if self.delay_mode is not None else DelayMode.FROM_END
         )
 
     def __repr__(self):
@@ -212,9 +218,7 @@ class Bet(object):
 
     def update_outcomes(self, outcomes):
         for i, outcome in enumerate(self.outcomes):
-            outcome[OutcomeKeys.TOTAL_USERS] = int(
-                outcomes[i][OutcomeKeys.TOTAL_USERS]
-            )
+            outcome[OutcomeKeys.TOTAL_USERS] = int(outcomes[i][OutcomeKeys.TOTAL_USERS])
             outcome[OutcomeKeys.TOTAL_POINTS] = int(
                 outcomes[i][OutcomeKeys.TOTAL_POINTS]
             )
@@ -247,9 +251,7 @@ class Bet(object):
 
                 outcome_points = outcome[OutcomeKeys.TOTAL_POINTS]
                 if outcome_points > 0:
-                    outcome[OutcomeKeys.ODDS] = (
-                        self.total_points / outcome_points
-                    )
+                    outcome[OutcomeKeys.ODDS] = self.total_points / outcome_points
 
         self.__clear_outcomes()
 
@@ -297,9 +299,7 @@ class Bet(object):
                     self.outcomes[index][key] = 0
 
     def __return_choice(self, key) -> int:
-        return max(
-            range(len(self.outcomes)), key=lambda i: self.outcomes[i][key]
-        )
+        return max(range(len(self.outcomes)), key=lambda i: self.outcomes[i][key])
 
     def skip(self) -> tuple[bool, float]:
         if self.settings.filter_condition is not None:
@@ -310,14 +310,11 @@ class Bet(object):
 
             fixed_key = (
                 key
-                if key
-                not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS]
+                if key not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS]
                 else key.replace("decision", "total")
             )
             if key in [OutcomeKeys.TOTAL_USERS, OutcomeKeys.TOTAL_POINTS]:
-                compared_value = sum(
-                    outcome[fixed_key] for outcome in self.outcomes
-                )
+                compared_value = sum(outcome[fixed_key] for outcome in self.outcomes)
             else:
                 outcome_index = self.decision["choice"]
                 compared_value = self.outcomes[outcome_index][fixed_key]
@@ -346,9 +343,7 @@ class Bet(object):
             "id": None,
         }
 
-        if all(
-            outcome[OutcomeKeys.TOTAL_POINTS] == 0 for outcome in self.outcomes
-        ):
+        if all(outcome[OutcomeKeys.TOTAL_POINTS] == 0 for outcome in self.outcomes):
             return self.decision
 
         is_event = False
@@ -373,9 +368,7 @@ class Bet(object):
 
         if not is_event:
             if self.settings.strategy == Strategy.MOST_VOTED:
-                self.decision["choice"] = self.__return_choice(
-                    OutcomeKeys.TOTAL_USERS
-                )
+                self.decision["choice"] = self.__return_choice(OutcomeKeys.TOTAL_USERS)
             elif self.settings.strategy == Strategy.HIGH_ODDS:
                 self.odds_strategy(balance)
             elif self.settings.strategy == Strategy.PERCENTAGE:
@@ -401,14 +394,9 @@ class Bet(object):
             if self.settings.stealth_mode is True:
                 self.decision["amount"] = min(
                     self.decision["amount"],
-                    self.outcomes[self.decision["choice"]][
-                        OutcomeKeys.TOP_POINTS
-                    ]
-                    - 1,
+                    self.outcomes[self.decision["choice"]][OutcomeKeys.TOP_POINTS] - 1,
                 )
-            self.decision["amount"] = int(
-                min(self.decision["amount"], balance, 250000)
-            )
+            self.decision["amount"] = int(min(self.decision["amount"], balance, 250000))
         return self.decision
 
     def odds_strategy(self, balance: int) -> None:
@@ -419,8 +407,7 @@ class Bet(object):
         self.decision["choice"] = first
         self.decision["amount"] = int(
             min(  # Keep bet from changing which outcome has the highest odds
-                min(balance, self.total_points)
-                * (self.settings.percentage / 100),
+                min(balance, self.total_points) * (self.settings.percentage / 100),
                 (
                     self.outcomes[second][OutcomeKeys.TOTAL_POINTS]
                     - self.outcomes[first][OutcomeKeys.TOTAL_POINTS]
@@ -447,30 +434,26 @@ class Bet(object):
         if self.settings.event_percentage is None:
             return False
 
-        failed_logger_extra = {
-            "color": Settings.logger.color_palette.BET_FAILED
-        }
+        failed_logger_extra = {"color": Settings.logger.color_palette.BET_FAILED}
 
         if event.strict and len(self.outcomes) != len(event.event_chances):
-            logger.info(
-                "Event outcomes counts don't match", failed_logger_extra
-            )
+            logger.info("Event outcomes counts don't match", failed_logger_extra)
             return False
 
         total_chance = 0
         outcome_chances = [0.0] * len(self.outcomes)
-        available_event_chances = set(event.event_chances.keys())
+        available_event_titles = {outcome for outcome, chance in event.event_chances}
 
         for i, decision_outcome in enumerate(self.outcomes):
-            for event_outcome, chance in event.event_chances.items():
-                if event_outcome in available_event_chances:
+            for event_outcome, chance in event.event_chances:
+                if event_outcome in available_event_titles:
                     if re.search(
                         event_outcome,
                         decision_outcome["title"],
                         flags=event.regex_flags,
                     ):
                         if event.strict:
-                            available_event_chances.remove(event_outcome)
+                            available_event_titles.remove(event_outcome)
                         outcome_chances[i] = chance
                         total_chance += chance
                         break
@@ -478,10 +461,8 @@ class Bet(object):
                 logger.info("Event outcome not found", failed_logger_extra)
                 return False
 
-        if event.strict and len(available_event_chances) > 0:
-            logger.info(
-                "Event outcomes left after matching", failed_logger_extra
-            )
+        if event.strict and len(available_event_titles) > 0:
+            logger.info("Event outcomes left after matching", failed_logger_extra)
             return False
 
         for i in range(len(outcome_chances)):
