@@ -309,6 +309,8 @@ class WebSocketsPool:
                                                 "event": Events.BET_START,
                                             },
                                         )
+                                        
+                                        ws.twitch.update_client_version()
                                     else:
                                         logger.info(
                                             f"{streamer} have only {streamer.channel_points} channel points and the minimum for bet is: {bet_settings.minimum_points}",

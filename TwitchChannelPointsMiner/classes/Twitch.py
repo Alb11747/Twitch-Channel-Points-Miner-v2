@@ -59,6 +59,7 @@ class Twitch(object):
         # "integrity_expire",
         "client_session",
         "client_version",
+        "client_version_cache_time",
         "twilight_build_id_pattern",
     ]
 
@@ -78,6 +79,7 @@ class Twitch(object):
         # self.integrity_expire = 0
         self.client_session = token_hex(16)
         self.client_version = CLIENT_VERSION
+        self.client_version_cache_time = float("-inf")
         self.twilight_build_id_pattern = re.compile(
             r"window\.__twilightBuildID=\"([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-4[0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12})\";"
         )
@@ -345,7 +347,9 @@ class Twitch(object):
         else:
             return False"""
 
-    def update_client_version(self):
+    def update_client_version(self, cache_time_to_live=24 * 60 * 60):
+        if time.time() - self.client_version_cache_time < cache_time_to_live:
+            return self.client_version
         try:
             response = requests.get(URL)
             if response.status_code != 200:
@@ -359,6 +363,7 @@ class Twitch(object):
                 return self.client_version
             self.client_version = matcher.group(1)
             logger.debug(f"Client version: {self.client_version}")
+            self.client_version_cache_time = time.time()
             return self.client_version
         except requests.exceptions.RequestException as e:
             logger.error(f"Error with update_client_version: {e}")
