@@ -11,6 +11,7 @@ import random
 import re
 import string
 import time
+
 # from datetime import datetime
 from pathlib import Path
 from secrets import choice, token_hex
@@ -133,10 +134,10 @@ class Twitch(object):
             # fixes AttributeError: 'NoneType' object has no attribute 'group'
             # headers = {"User-Agent": self.user_agent}
             from TwitchChannelPointsMiner.constants import USER_AGENTS
+
             headers = {"User-Agent": USER_AGENTS["Linux"]["FIREFOX"]}
 
-            main_page_request = self.session.get(
-                streamer.streamer_url, headers=headers)
+            main_page_request = self.session.get(streamer.streamer_url, headers=headers)
             response = main_page_request.text
             # logger.info(response)
             regex_settings = "(https://static.twitchcdn.net/config/settings.*?js)"
@@ -145,11 +146,9 @@ class Twitch(object):
             settings_request = self.session.get(settings_url, headers=headers)
             response = settings_request.text
             regex_spade = '"spade_url":"(.*?)"'
-            streamer.stream.spade_url = re.search(
-                regex_spade, response).group(1)
+            streamer.stream.spade_url = re.search(regex_spade, response).group(1)
         except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Something went wrong during extraction of 'spade_url': {e}")
+            logger.error(f"Something went wrong during extraction of 'spade_url': {e}")
 
     def get_broadcast_id(self, streamer):
         json_data = copy.deepcopy(GQLOperations.WithIsStreamLiveQuery)
@@ -163,8 +162,7 @@ class Twitch(object):
                 raise StreamerIsOfflineException
 
     def get_stream_info(self, streamer):
-        json_data = copy.deepcopy(
-            GQLOperations.VideoPlayerStreamInfoOverlayChannel)
+        json_data = copy.deepcopy(GQLOperations.VideoPlayerStreamInfoOverlayChannel)
         json_data["variables"] = {"channel": streamer.username}
         response = self.post_gql_request(json_data)
         if response != {}:
@@ -236,8 +234,7 @@ class Twitch(object):
 
             logger.info(
                 f"Joining raid from {streamer} to {raid.target_login}!",
-                extra={"emoji": ":performing_arts:",
-                       "event": Events.JOIN_RAID},
+                extra={"emoji": ":performing_arts:", "event": Events.JOIN_RAID},
             )
 
     def viewer_is_mod(self, streamer):
@@ -269,6 +266,7 @@ class Twitch(object):
             self.__chuncked_sleep(random_sleep * 60, chunk_size=chunk_size)
 
     def post_gql_request(self, json_data):
+        start_time = time.time()
         try:
             response = self.session.post(
                 GQLOperations.url,
@@ -283,15 +281,27 @@ class Twitch(object):
                     "X-Device-Id": self.device_id,
                 },
             )
-            logger.debug(
-                f"Data: {json_data}, Status code: {response.status_code}, Content: {response.text}"
-            )
+            if not response.ok:
+                logger.warning(f"Status {response.reason } ({response.status_code}) for GQL request.")
+                logger.warning(f"Request: {json_data}")
+                logger.warning(f"Content: {response.text}")
+            else:
+                logger.debug(
+                    f"Data: {json_data}, Status code: {response.status_code}, Content: {response.text}"
+                )
             return response.json()
         except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Error with GQLOperations ({json_data['operationName']}): {e}"
-            )
+            info = "Unknown"
+            if isinstance(json_data, dict) and "operationName" in json_data:
+                info = json_data["operationName"]
+            logger.error(f"Error with GQLOperations ({info}): {e}")
             return {}
+        finally:
+            end_time = time.time()
+            info = "Unknown"
+            if isinstance(json_data, dict) and "operationName" in json_data:
+                info = json_data["operationName"]
+            logger.debug(f"Request '{info}' took {end_time - start_time:.3f} seconds")
 
     # Request for Integrity Token
     # Twitch needs Authorization, Client-Id, X-Device-Id to generate JWT which is used for authorize gql requests
@@ -397,13 +407,11 @@ class Twitch(object):
                         streamers_watching += streamers_index[:2]
 
                     elif (
-                        prior in [Priority.POINTS_ASCENDING,
-                                  Priority.POINTS_DESCEDING]
+                        prior in [Priority.POINTS_ASCENDING, Priority.POINTS_DESCEDING]
                         and len(streamers_watching) < 2
                     ):
                         items = [
-                            {"points": streamers[index].channel_points,
-                                "index": index}
+                            {"points": streamers[index].channel_points, "index": index}
                             for index in streamers_index
                         ]
                         items = sorted(
@@ -413,8 +421,7 @@ class Twitch(object):
                                 True if prior == Priority.POINTS_DESCEDING else False
                             ),
                         )
-                        streamers_watching += [item["index"]
-                                               for item in items][:2]
+                        streamers_watching += [item["index"] for item in items][:2]
 
                     elif prior == Priority.STREAK and len(streamers_watching) < 2:
                         """
@@ -430,8 +437,7 @@ class Twitch(object):
                                 and (
                                     streamers[index].offline_at == 0
                                     or (
-                                        (time.time() -
-                                         streamers[index].offline_at)
+                                        (time.time() - streamers[index].offline_at)
                                         // 60
                                     )
                                     > 30
@@ -457,8 +463,7 @@ class Twitch(object):
                         ]
                         streamers_with_multiplier = sorted(
                             streamers_with_multiplier,
-                            key=lambda x: streamers[x].total_points_multiplier(
-                            ),
+                            key=lambda x: streamers[x].total_points_multiplier(),
                             reverse=True,
                         )
                         streamers_watching += streamers_with_multiplier[:2]
@@ -527,12 +532,10 @@ class Twitch(object):
                                             )
 
                     except requests.exceptions.ConnectionError as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
                         self.__check_connection_handler(chunk_size)
                     except requests.exceptions.Timeout as e:
-                        logger.error(
-                            f"Error while trying to send minute watched: {e}")
+                        logger.error(f"Error while trying to send minute watched: {e}")
 
                     self.__chuncked_sleep(
                         next_iteration - time.time(), chunk_size=chunk_size
@@ -541,8 +544,7 @@ class Twitch(object):
                 if streamers_watching == []:
                     self.__chuncked_sleep(60, chunk_size=chunk_size)
             except Exception:
-                logger.error(
-                    "Exception raised in send minute watched", exc_info=True)
+                logger.error("Exception raised in send minute watched", exc_info=True)
 
     # === CHANNEL POINTS / PREDICTION === #
     # Load the amount of current points for a channel, check if a bonus is available
@@ -560,8 +562,7 @@ class Twitch(object):
             streamer.activeMultipliers = community_points["activeMultipliers"]
 
             if community_points["availableClaim"] is not None:
-                self.claim_bonus(
-                    streamer, community_points["availableClaim"]["id"])
+                self.claim_bonus(streamer, community_points["availableClaim"]["id"])
 
     def make_predictions(self, event):
         if event.bet_confirmed is True:
@@ -623,7 +624,8 @@ class Twitch(object):
                     if (
                         response.get("data", None) is not None
                         and response["data"].get("makePrediction", None) is not None
-                        and response["data"]["makePrediction"].get("error", None) is not None
+                        and response["data"]["makePrediction"].get("error", None)
+                        is not None
                     ):
                         error_code = response["data"]["makePrediction"]["error"]["code"]
                         logger.error(
@@ -668,20 +670,16 @@ class Twitch(object):
         if Settings.logger.less is False:
             logger.info(
                 f"Claiming the moment for {streamer}!",
-                extra={"emoji": ":video_camera:",
-                       "event": Events.MOMENT_CLAIM},
+                extra={"emoji": ":video_camera:", "event": Events.MOMENT_CLAIM},
             )
 
         json_data = copy.deepcopy(GQLOperations.CommunityMomentCallout_Claim)
-        json_data["variables"] = {
-            "input": {"momentID": moment_id}
-        }
+        json_data["variables"] = {"input": {"momentID": moment_id}}
         self.post_gql_request(json_data)
 
     # === CAMPAIGNS / DROPS / INVENTORY === #
     def __get_campaign_ids_from_streamer(self, streamer):
-        json_data = copy.deepcopy(
-            GQLOperations.DropsHighlightService_AvailableDrops)
+        json_data = copy.deepcopy(GQLOperations.DropsHighlightService_AvailableDrops)
         json_data["variables"] = {"channelID": streamer.channel_id}
         response = self.post_gql_request(json_data)
         try:
@@ -709,8 +707,7 @@ class Twitch(object):
         response = self.post_gql_request(GQLOperations.ViewerDropsDashboard)
         campaigns = response["data"]["currentUser"]["dropCampaigns"]
         if status is not None:
-            campaigns = list(
-                filter(lambda x: x["status"] == status.upper(), campaigns))
+            campaigns = list(filter(lambda x: x["status"] == status.upper(), campaigns))
         return campaigns
 
     def __get_campaigns_details(self, campaigns):
@@ -719,8 +716,7 @@ class Twitch(object):
         for chunk in chunks:
             json_data = []
             for campaign in chunk:
-                json_data.append(copy.deepcopy(
-                    GQLOperations.DropCampaignDetails))
+                json_data.append(copy.deepcopy(GQLOperations.DropCampaignDetails))
                 json_data[-1]["variables"] = {
                     "dropID": campaign["id"],
                     "channelLogin": f"{self.twitch_login.get_user_id()}",
@@ -762,8 +758,7 @@ class Twitch(object):
         )
 
         json_data = copy.deepcopy(GQLOperations.DropsPage_ClaimDropRewards)
-        json_data["variables"] = {
-            "input": {"dropInstanceID": drop.drop_instance_id}}
+        json_data["variables"] = {"input": {"dropInstanceID": drop.drop_instance_id}}
         response = self.post_gql_request(json_data)
         try:
             # response["data"]["claimDropRewards"] can be null and respose["data"]["errors"] != []
