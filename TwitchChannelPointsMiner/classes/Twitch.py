@@ -55,6 +55,7 @@ class Twitch(object):
         "twitch_login",
         "running",
         "device_id",
+        "session",
         # "integrity",
         # "integrity_expire",
         "client_session",
@@ -71,6 +72,7 @@ class Twitch(object):
         self.device_id = "".join(
             choice(string.ascii_letters + string.digits) for _ in range(32)
         )
+        self.session = requests.Session()
         self.twitch_login = TwitchLogin(
             CLIENT_ID, self.device_id, username, self.user_agent, password=password
         )
@@ -133,14 +135,14 @@ class Twitch(object):
             from TwitchChannelPointsMiner.constants import USER_AGENTS
             headers = {"User-Agent": USER_AGENTS["Linux"]["FIREFOX"]}
 
-            main_page_request = requests.get(
+            main_page_request = self.session.get(
                 streamer.streamer_url, headers=headers)
             response = main_page_request.text
             # logger.info(response)
             regex_settings = "(https://static.twitchcdn.net/config/settings.*?js)"
             settings_url = re.search(regex_settings, response).group(1)
 
-            settings_request = requests.get(settings_url, headers=headers)
+            settings_request = self.session.get(settings_url, headers=headers)
             response = settings_request.text
             regex_spade = '"spade_url":"(.*?)"'
             streamer.stream.spade_url = re.search(
@@ -268,7 +270,7 @@ class Twitch(object):
 
     def post_gql_request(self, json_data):
         try:
-            response = requests.post(
+            response = self.session.post(
                 GQLOperations.url,
                 json=json_data,
                 headers={
@@ -301,7 +303,7 @@ class Twitch(object):
         ):
             return self.integrity
         try:
-            response = requests.post(
+            response = self.session.post(
                 GQLOperations.integrity_url,
                 json={},
                 headers={
@@ -351,7 +353,7 @@ class Twitch(object):
         if time.time() - self.client_version_cache_time < cache_time_to_live:
             return self.client_version
         try:
-            response = requests.get(URL)
+            response = self.session.get(URL)
             if response.status_code != 200:
                 logger.debug(
                     f"Error with update_client_version: {response.status_code}"
@@ -471,7 +473,7 @@ class Twitch(object):
                     next_iteration = time.time() + 60 / len(streamers_watching)
 
                     try:
-                        response = requests.post(
+                        response = self.session.post(
                             streamers[index].stream.spade_url,
                             data=streamers[index].stream.encode_payload(),
                             headers={"User-Agent": self.user_agent},
@@ -573,7 +575,6 @@ class Twitch(object):
             return
 
         decision = event.bet.calculate(event.streamer.channel_points, event.title)
-        selector_index = 0 if decision["choice"] == "A" else 1
 
         logger.info(
             f"Going to complete bet for {event}",
@@ -602,7 +603,6 @@ class Twitch(object):
             else:
                 if decision["amount"] > 0:
                     logger.info(
-                        # f"Place {_millify(decision['amount'])} channel points on: {event.bet.get_outcome(selector_index)}",
                         f"Place {_millify(decision['amount'])} channel points on: {event.bet.get_outcome(decision['choice'])}",
                         extra={
                             "emoji": ":four_leaf_clover:",
