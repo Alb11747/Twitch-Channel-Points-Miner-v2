@@ -516,6 +516,7 @@ class Twitch(object):
                                                     "event": Events.DROP_STATUS,
                                                     "skip_telegram": True,
                                                     "skip_discord": True,
+                                                    "skip_matrix": True,
                                                 },
                                             )
 
@@ -810,12 +811,15 @@ class Twitch(object):
 
                     # Going to clear array and structure. Remove all the timeBasedDrops expired or not started yet
                     for index in range(0, len(campaigns_details)):
-                        campaign = Campaign(campaigns_details[index])
-                        if campaign.dt_match is True:
-                            # Remove all the drops already claimed or with dt not matching
-                            campaign.clear_drops()
-                            if campaign.drops != []:
-                                campaigns.append(campaign)
+                        if campaigns_details[index] is not None:
+                            campaign = Campaign(campaigns_details[index])
+                            if campaign.dt_match is True:
+                                # Remove all the drops already claimed or with dt not matching
+                                campaign.clear_drops()
+                                if campaign.drops != []:
+                                    campaigns.append(campaign)
+                        else:
+                            continue
 
                 # Divide et impera :)
                 campaigns = self.__sync_campaigns(campaigns)

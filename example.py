@@ -6,6 +6,7 @@ from TwitchChannelPointsMiner import TwitchChannelPointsMiner
 from TwitchChannelPointsMiner.logger import LoggerSettings, ColorPalette
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence
 from TwitchChannelPointsMiner.classes.Discord import Discord
+from TwitchChannelPointsMiner.classes.Matrix import Matrix
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
@@ -22,6 +23,7 @@ twitch_miner = TwitchChannelPointsMiner(
     ],
     enable_analytics=False,                     # Disables Analytics if False. Disabling it significantly reduces memory consumption
     disable_ssl_cert_verification=False,        # Set to True at your own risk and only to fix SSL: CERTIFICATE_VERIFY_FAILED error
+    disable_at_in_nickname=False,               # Set to True if you want to check for your nickname mentions in the chat even without @ sign
     logger_settings=LoggerSettings(
         save=True,                              # If you want to save logs in a file (suggested)
         console_level=logging.INFO,             # Level of logs - use logging.DEBUG for more info
@@ -37,17 +39,24 @@ twitch_miner = TwitchChannelPointsMiner(
             streamer_offline="red",             # Read more in README.md
             BET_wiN=Fore.MAGENTA                # Color allowed are: [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, RESET].
         ),
-        telegram=Telegram(                                                          # You can omit or leave None if you don't want to receive updates on Telegram
-            chat_id=123456789,                                                      # Chat ID to send messages @GiveChatId
+        telegram=Telegram(                                                          # You can omit or set to None if you don't want to receive updates on Telegram
+            chat_id=123456789,                                                      # Chat ID to send messages @getmyid_bot
             token="123456789:shfuihreuifheuifhiu34578347",                          # Telegram API token @BotFather
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION],                          # Only these events will be sent to the chat
             disable_notification=True,                                              # Revoke the notification (sound/vibration)
         ),
         discord=Discord(
-            webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J", # Discord Webhook URL
+            webhook_api="https://discord.com/api/webhooks/0123456789/0a1B2c3D4e5F6g7H8i9J",  # Discord Webhook URL
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE,
                     Events.BET_LOSE, Events.CHAT_MENTION],                                  # Only these events will be sent to the chat
+        ),
+        matrix=Matrix(
+            username="twitch_miner",                                                   # Matrix username (without homeserver)
+            password="...",                                                            # Matrix password
+            homeserver="matrix.org",                                                   # Matrix homeserver
+            room_id="...",                                                             # Room ID
+            events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE, Events.BET_LOSE], # Only these events will be sent to the chat
         )
     ),
     streamer_settings=StreamerSettings(

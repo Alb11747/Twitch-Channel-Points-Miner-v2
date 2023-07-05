@@ -3,6 +3,7 @@ import os
 import platform
 import queue
 import pytz
+import sys
 from datetime import datetime
 from logging.handlers import QueueHandler, QueueListener, TimedRotatingFileHandler
 from pathlib import Path
@@ -11,6 +12,7 @@ import emoji
 from colorama import Fore, init
 
 from TwitchChannelPointsMiner.classes.Discord import Discord
+from TwitchChannelPointsMiner.classes.Matrix import Matrix
 from TwitchChannelPointsMiner.classes.Settings import Events
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.utils import remove_emoji
@@ -71,7 +73,8 @@ class LoggerSettings:
         "color_palette",
         "auto_clear",
         "telegram",
-        "discord"
+        "discord",
+        "matrix"
     ]
 
     def __init__(
@@ -88,6 +91,7 @@ class LoggerSettings:
         auto_clear: bool = True,
         telegram: Telegram or None = None,
         discord: Discord or None = None,
+        matrix: Matrix or None = None
     ):
         self.save = save
         self.less = less
@@ -101,6 +105,7 @@ class LoggerSettings:
         self.auto_clear = auto_clear
         self.telegram = telegram
         self.discord = discord
+        self.matrix = matrix
 
 
 class FileFormatter(logging.Formatter):
@@ -171,6 +176,7 @@ class GlobalFormatter(logging.Formatter):
         if hasattr(record, "event"):
             self.telegram(record)
             self.discord(record)
+            self.matrix(record)
 
             if self.settings.colored is True:
                 record.msg = (
@@ -202,6 +208,18 @@ class GlobalFormatter(logging.Formatter):
         ):
             self.settings.discord.send(record.msg, record.event)
 
+    def matrix(self, record):
+        skip_matrix = False if hasattr(
+            record, "skip_matrix") is False else True
+
+        if (
+            self.settings.matrix is not None
+            and skip_matrix is False
+            and self.settings.matrix.room_id != "..."
+            and self.settings.matrix.access_token
+        ):
+            self.settings.matrix.send(record.msg, record.event)
+
 
 def configure_loggers(username, settings):
     if settings.colored is True:
@@ -219,7 +237,7 @@ def configure_loggers(username, settings):
     # Adding a username to the format based on settings
     console_username = "" if settings.console_username is False else f"[{username}] "
 
-    console_handler = logging.StreamHandler()
+    console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(settings.console_level)
     console_handler.setFormatter(
         GlobalFormatter(
