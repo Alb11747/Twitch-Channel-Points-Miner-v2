@@ -122,7 +122,8 @@ class TwitchChannelPointsMiner:
 
         if enable_analytics is True:
             Settings.analytics_path = os.path.join(
-                Path().absolute(), "analytics", username)
+                Path().absolute(), "analytics", username
+            )
             Path(Settings.analytics_path).mkdir(parents=True, exist_ok=True)
 
         self.username = username
@@ -161,7 +162,8 @@ class TwitchChannelPointsMiner:
         current_version, github_version = check_versions()
 
         logger.info(
-            f"Twitch Channel Points Miner v2-{current_version} (fork by rdavydov)")
+            f"Twitch Channel Points Miner v2-{current_version} (fork by rdavydov)"
+        )
         logger.info(
             "https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2")
 
@@ -384,7 +386,7 @@ class TwitchChannelPointsMiner:
                 # Check if is not None because maybe we have already created a new connection on array+1 and now index is None
                 for index in range(len(self.ws_pool.ws)):
                     if (
-                        self.ws_pool.ws[index].is_reconneting is False
+                        self.ws_pool.ws[index].is_reconnecting is False
                         and self.ws_pool.ws[index].elapsed_last_ping() > 10
                         and internet_connection_available() is True
                     ):

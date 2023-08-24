@@ -6,8 +6,9 @@ from TwitchChannelPointsMiner import TwitchChannelPointsMiner
 from TwitchChannelPointsMiner.logger import LoggerSettings, ColorPalette
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence
 from TwitchChannelPointsMiner.classes.Discord import Discord
-from TwitchChannelPointsMiner.classes.Matrix import Matrix
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
+from TwitchChannelPointsMiner.classes.Matrix import Matrix
+from TwitchChannelPointsMiner.classes.Pushover import Pushover
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
 from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
@@ -57,6 +58,13 @@ twitch_miner = TwitchChannelPointsMiner(
             homeserver="matrix.org",                                                   # Matrix homeserver
             room_id="...",                                                             # Room ID
             events=[Events.STREAMER_ONLINE, Events.STREAMER_OFFLINE, Events.BET_LOSE], # Only these events will be sent to the chat
+        ),
+        pushover=Pushover(
+            userkey="YOUR-ACCOUNT-TOKEN",                                             # Login to https://pushover.net/, the user token is on the main page.
+            token="YOUR-APPLICATION-TOKEN",                                           # Create a application on the website, and use the token shown in your application.
+            priority=0,                                                               # Read more about priority here: https://pushover.net/api#priority
+            sound="pushover",                                                         # A list of sounds can be found here: https://pushover.net/api#sounds
+            events=[Events.CHAT_MENTION, Events.DROP_CLAIM],                          # Only these events will be sent.
         )
     ),
     streamer_settings=StreamerSettings(
