@@ -418,14 +418,14 @@ class Bet(object):
 
         total_chance = 0
         outcome_chances = [0.0] * len(self.outcomes)
-        available_event_titles = {outcome for outcome, chance in event.event_chances}
+        available_event_titles = {id(outcome) for outcome, chance in event.event_chances}
 
         for i, decision_outcome in enumerate(self.outcomes):
             for event_outcome, chance in event.event_chances:
-                if event_outcome in available_event_titles:
+                if id(event_outcome) in available_event_titles:
                     if event_outcome.search(decision_outcome["title"]):
                         if event.strict:
-                            available_event_titles.remove(event_outcome)
+                            available_event_titles.remove(id(event_outcome))
                         outcome_chances[i] = chance
                         total_chance += chance
                         break
