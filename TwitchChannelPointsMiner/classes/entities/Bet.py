@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Union
 
 from millify import millify
 
-from TwitchChannelPointsMiner.classes.Settings import Settings
+from TwitchChannelPointsMiner.classes.Settings import Events, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,7 @@ class BetEvent(object):
         "strict",
         "filter",
         "regex_flags",
+        "name",
     ]
 
     def __init__(
@@ -95,6 +96,7 @@ class BetEvent(object):
         strict: bool = True,
         filter: Optional[Callable[["BetEventData"], bool]] = None,
         regex_flags: re.RegexFlag = re.IGNORECASE,
+        name: Optional[str] = None,
     ):
         """
         Object that represents a bet event with a title regex and chances of each outcome.
@@ -105,6 +107,7 @@ class BetEvent(object):
         :param strict: If true, outcome labels must match exactly. Otherwise the same outcome label can be used multiple times and not all outcomes must be present
         :param filter: Function to filter the bets before placing them. Return True if the bet should be placed, False otherwise
         :param regex_flags: Flags to use when compiling the regex
+        :param name: Name of the event for logging purposes
 
         Probability of the outcomes will be normalized to 1.
 
@@ -136,6 +139,7 @@ class BetEvent(object):
         self.strict = strict
         self.filter = filter
         self.regex_flags = regex_flags
+        self.name = name
 
     def __repr__(self):
         return f"{self.__class__.__name__}({', '.join(f'{attr}={getattr(self, attr)!r}' for attr in self.__slots__)})"
@@ -345,10 +349,7 @@ class Bet(object):
 
         is_event = False
         if title is None:
-            logger.warning(
-                "Missing Title",
-                {"color": Settings.logger.color_palette.BET_FAILED},
-            )
+            logger.warning("Missing Title", {"color": Settings.logger.color_palette.get(Events.BET_FAILED)})
         elif self.settings.events is not None:
             for event in self.settings.events:
                 if event.title is None or event.title.search(title):
@@ -410,10 +411,19 @@ class Bet(object):
         if self.settings.event_percentage is None:
             return False
 
-        failed_logger_extra = {"color": Settings.logger.color_palette.BET_FAILED}
+        failed_logger_extra = {"color": Settings.logger.color_palette.get(Events.BET_FAILED)}
+
+        # Print identifiable event name
+        bet_info = " (Unknown Bet)"
+        if event.name is not None:
+            bet_info = f" (Name: {event.name})"
+        if event.title is not None:
+            bet_info = f" (Title: {event.title.pattern})"
+        if event.filter is not None:
+            bet_info = f" (Filter: {event.filter})"
 
         if event.strict and len(self.outcomes) != len(event.event_chances):
-            logger.info("Event outcomes counts don't match", failed_logger_extra)
+            logger.info(f"Event outcomes counts don't match{bet_info}", failed_logger_extra)
             return False
 
         total_chance = 0
@@ -434,25 +444,24 @@ class Bet(object):
                 return False
 
         if event.strict and len(available_event_titles) > 0:
-            logger.info("Event outcomes left after matching", failed_logger_extra)
+            logger.info(f"Event outcomes left after matching{bet_info}", failed_logger_extra)
             return False
 
         # Normalize chances
         for i in range(len(outcome_chances)):
             outcome_chances[i] /= total_chance
 
-        decision = None
-        max_expected_value = 0
+        decision: Optional[int] = None
+        decision_bet_amount = 0
+        decision_odds_after_bet = 0
+        decision_expected_value = 0
 
         for i, outcome in enumerate(self.outcomes):
             if outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points >= outcome_chances[i]:
                 continue
 
-            t, o, c = (
-                self.total_points,
-                outcome[OutcomeKeys.TOTAL_POINTS],
-                1 / outcome_chances[i],
-            )
+            # Calculate bet amount
+            t, o, c = (self.total_points, outcome[OutcomeKeys.TOTAL_POINTS], 1 / outcome_chances[i])
 
             # Account for Bet amount and scale based on difference of actual chance and bet reward
             p = balance * (self.settings.event_percentage / 100) * (outcome_chances[i] ** 2)
@@ -464,17 +473,28 @@ class Bet(object):
             odds_after_bet = (self.total_points + bet_amount) / (outcome[OutcomeKeys.TOTAL_POINTS] + bet_amount)
             expected_value = odds_after_bet * bet_amount * outcome_chances[i] - bet_amount
 
-            if expected_value > max_expected_value:
-                decision = (i, bet_amount)
-                max_expected_value = expected_value
+            if expected_value > decision_expected_value:
+                decision = i
+                decision_bet_amount = bet_amount
+                decision_odds_after_bet = odds_after_bet
+                decision_expected_value = expected_value
 
         if decision is None:
-            logger.error("No profitable outcome found", failed_logger_extra)
+            logger.error(f"No profitable outcome found{bet_info}", failed_logger_extra)
             return True
 
-        self.decision["choice"], self.decision["amount"] = decision
+        self.decision["choice"] = decision
+        self.decision["amount"] = decision_bet_amount
         if event.max_points is not None:
-            self.decision["amount"] = min(self.decision["amount"], event.max_points * outcome_chances[decision[0]])
-        self.decision["amount"] = min(self.decision["amount"], balance * outcome_chances[decision[0]])
+            self.decision["amount"] = min(self.decision["amount"], event.max_points * outcome_chances[decision])
+        self.decision["amount"] = min(self.decision["amount"], balance * outcome_chances[decision])
+
+        logger.info(
+            f"Calculated bet for event{bet_info}: "
+            f"Bet Percent: {decision_odds_after_bet:.2%}%, "
+            f"Expected Chance: {100 * outcome_chances[decision]:.2%}, "
+            f"Expected Value: {decision_expected_value:.2f}",
+            {"color": Settings.logger.color_palette.get(Events.BET_GENERAL)},
+        )
 
         return True
