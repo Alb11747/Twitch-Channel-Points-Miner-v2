@@ -1,4 +1,9 @@
+import typing
 from enum import Enum, auto
+
+if typing.TYPE_CHECKING:
+    from TwitchChannelPointsMiner.classes.entities.Streamer import StreamerSettings
+    from TwitchChannelPointsMiner.logger import LoggerSettings
 
 
 class Priority(Enum):
@@ -20,8 +25,13 @@ class FollowersOrder(Enum):
 
 # Empty object shared between class
 class Settings(object):
-    __slots__ = ["logger", "streamer_settings",
-                 "enable_analytics", "disable_ssl_cert_verification", "disable_at_in_nickname"]
+    __slots__ = ["logger", "streamer_settings", "enable_analytics", "disable_ssl_cert_verification", "disable_at_in_nickname"]
+
+    logger: "LoggerSettings"
+    streamer_settings: "StreamerSettings"
+    enable_analytics: bool
+    disable_ssl_cert_verification: bool
+    disable_at_in_nickname: bool
 
 
 class Events(Enum):
