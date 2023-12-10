@@ -1,4 +1,4 @@
-FROM python:3.11-slim-buster
+FROM python:3.12
 
 ARG BUILDX_QEMU_ENV
 
@@ -18,8 +18,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --fix-missing --no-ins
     zlib1g-dev \
     libjpeg-dev \
     libssl-dev \
+    libblas-dev \
+    liblapack-dev \
     make \
+    cmake \    
     automake \
+    ninja-build \
     g++ \
     subversion \
     python3-dev \

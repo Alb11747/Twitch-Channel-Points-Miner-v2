@@ -140,6 +140,9 @@ cython_debug/
 # PyCharm
 .idea/
 
+# VSCode
+.vscode/
+
 # Custom files
 run.py
 chromedriver*
@@ -150,4 +153,8 @@ logs/*
 screenshots/*
 htmls/*
 analytics/*
-.vscode/
+
+# Replit
+keep_replit_alive.py
+.replit
+replit.nix
