@@ -489,10 +489,11 @@ class Bet(object):
             self.decision["amount"] = min(self.decision["amount"], event.max_points * outcome_chances[decision])
         self.decision["amount"] = min(self.decision["amount"], balance * outcome_chances[decision])
 
+        # Logging error if a single '%' is used rather than double '%%'
         logger.info(
             f"Calculated bet for event{bet_info}: "
-            f"Bet Percent: {decision_odds_after_bet:.2%}, "
-            f"Expected Chance: {outcome_chances[decision]:.2%}, "
+            f"Bet Percent: {decision_odds_after_bet:.2%}%, "
+            f"Expected Chance: {outcome_chances[decision]:.2%}%, "
             f"Expected Value: {decision_expected_value:.2f}",
             {"color": Settings.logger.color_palette.get(Events.BET_GENERAL)},
         )
