@@ -464,7 +464,7 @@ class Bet(object):
             t, o, c = (self.total_points, outcome[OutcomeKeys.TOTAL_POINTS], 1 / outcome_chances[i])
 
             # Account for Bet amount and scale based on difference of actual chance and bet reward
-            p = balance * (self.settings.event_percentage / 100) * (outcome_chances[i] ** 2)
+            p = min(balance, 1e6) * (self.settings.event_percentage / 100) * (outcome_chances[i] ** 2)
             bet_amount = (math.sqrt((c * p + o - p) ** 2 - 4 * (c * o * p - p * t)) - c * p - o + p) / 2
 
             # Limit bet amount to bet with max expected value and twitch limit
