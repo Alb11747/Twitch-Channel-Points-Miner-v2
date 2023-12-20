@@ -417,10 +417,10 @@ class Bet(object):
         bet_info = " (Unknown Bet)"
         if event.name is not None:
             bet_info = f" (Name: {event.name})"
-        if event.title is not None:
+        elif event.title is not None:
             bet_info = f" (Title: {event.title.pattern})"
-        if event.filter is not None:
-            bet_info = f" (Filter: {event.filter})"
+        elif event.filter is not None and getattr(event.filter, "__name__", None) not in ["<lambda>", None]:
+            bet_info = f" (Filter: {event.filter.__name__})"
 
         if event.strict and len(self.outcomes) != len(event.event_chances):
             logger.info(f"Event outcomes counts don't match{bet_info}", failed_logger_extra)
