@@ -492,7 +492,7 @@ class Bet(object):
         # Logging error if a single '%' is used rather than double '%%'
         logger.info(
             f"Calculated bet for event{bet_info}: "
-            f"Bet Percent: {decision_odds_after_bet:.2%}%, "
+            f"New Bet Percent: {1 / decision_odds_after_bet:.2%}% (Odds: {decision_odds_after_bet:.2f}), "
             f"Expected Chance: {outcome_chances[decision]:.2%}%, "
             f"Expected Value: {decision_expected_value:.2f}",
             {"color": Settings.logger.color_palette.get(Events.BET_GENERAL)},
