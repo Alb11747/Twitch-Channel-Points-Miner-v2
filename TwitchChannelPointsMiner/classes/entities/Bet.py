@@ -414,37 +414,38 @@ class Bet(object):
         failed_logger_extra = {"color": Settings.logger.color_palette.get(Events.BET_FAILED)}
 
         # Print identifiable event name
-        bet_info = " (Unknown Bet)"
+        bet_info = "(Unknown Bet)"
         if event.name is not None:
-            bet_info = f" (Name: {event.name})"
+            bet_info = f"(Name: {event.name})"
         elif event.title is not None:
-            bet_info = f" (Title: {event.title.pattern})"
+            bet_info = f"(Title: {event.title.pattern})"
         elif event.filter is not None and getattr(event.filter, "__name__", None) not in ["<lambda>", None]:
-            bet_info = f" (Filter: {event.filter.__name__})"
+            bet_info = f"(Filter: {event.filter.__name__})"
 
         if event.strict and len(self.outcomes) != len(event.event_chances):
-            logger.info(f"Event outcomes counts don't match{bet_info}", failed_logger_extra)
+            logger.info(f"Event outcomes counts don't match {bet_info}: {len(self.outcomes)=} != {len(event.event_chances)=}", failed_logger_extra)
             return False
 
         total_chance = 0
         outcome_chances = [0.0] * len(self.outcomes)
-        available_event_titles = {id(outcome) for outcome, chance in event.event_chances}
+        available_event_titles = [outcome for outcome, chance in event.event_chances]
 
         for i, decision_outcome in enumerate(self.outcomes):
             for event_outcome, chance in event.event_chances:
-                if id(event_outcome) in available_event_titles:
+                if event_outcome in available_event_titles:
                     if event_outcome.search(decision_outcome["title"]):
                         if event.strict:
-                            available_event_titles.remove(id(event_outcome))
+                            available_event_titles.remove(event_outcome)
                         outcome_chances[i] = chance
                         total_chance += chance
                         break
             else:
-                logger.info("Event outcome not found", failed_logger_extra)
+                logger.info(f"Event outcome not found {bet_info}: {decision_outcome['title']}", failed_logger_extra)
                 return False
 
         if event.strict and len(available_event_titles) > 0:
-            logger.info(f"Event outcomes left after matching{bet_info}", failed_logger_extra)
+            outcomes_left = ", ".join(f"'{outcome.pattern}'" for outcome in available_event_titles)
+            logger.info(f"Event outcomes left after matching {bet_info}: {outcomes_left}", failed_logger_extra)
             return False
 
         # Normalize chances
@@ -480,7 +481,7 @@ class Bet(object):
                 decision_expected_value = expected_value
 
         if decision is None:
-            logger.error(f"No profitable outcome found{bet_info}", failed_logger_extra)
+            logger.error(f"No profitable outcome found {bet_info}", failed_logger_extra)
             return True
 
         self.decision["choice"] = decision
@@ -491,7 +492,7 @@ class Bet(object):
 
         # Logging error if a single '%' is used rather than double '%%'
         logger.info(
-            f"Calculated bet for event{bet_info}: "
+            f"Calculated bet for event {bet_info}: "
             f"New Bet Percent: {1 / decision_odds_after_bet:.2%}% (Odds: {decision_odds_after_bet:.2f}), "
             f"Expected Chance: {outcome_chances[decision]:.2%}%, "
             f"Expected Value: {decision_expected_value:.2f}",
