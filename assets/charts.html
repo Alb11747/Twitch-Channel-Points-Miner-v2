@@ -99,14 +99,6 @@
                                     src="https://img.shields.io/github/last-commit/rdavydov/Twitch-Channel-Points-Miner-v2" /></a>
                         </td>
                     </tr>
-                    <tr>
-                        <td><a href="https://www.buymeacoffee.com/tkdalex" target="_blank">
-                                <img src="https://cdn.buymeacoffee.com/buttons/lato-yellow.png"
-                                    alt="Buy Tkd-Alex A Coffee" height="5" width="138"></a></td>
-                        <td><a href="https://www.buymeacoffee.com/davydov" target="_blank">
-                                <img src="https://cdn.buymeacoffee.com/buttons/lato-blue.png"
-                                    alt="Buy rdavydov A Coffee" height="5" width="138"></td>
-                    </tr>
                 </table>
             </div>
         </div>
@@ -153,6 +145,7 @@
                 <input class="input" type="date" id="endDate">
             </div>
             <div class="column has-text-right" style="margin: auto">
+                <button id="auto-update-log">⏸️</button>
                 <label class="checkbox checkbox-label">
                     Log
                     <input type="checkbox" id="log">
@@ -184,8 +177,7 @@
         <div class="columns">
             <div class="column is-12">
                 <div class="box" id="log-box" style="padding: 0.30rem; display: none;">
-                    <pre
-                        id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.&#10;&#13;</pre>
+                    <pre id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.&#10;&#13;</pre>
                 </div>
             </div>
         </div>
