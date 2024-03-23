@@ -18,6 +18,14 @@ class Strategy(Enum):
     PERCENTAGE = auto()
     SMART_MONEY = auto()
     SMART = auto()
+    NUMBER_1 = auto()
+    NUMBER_2 = auto()
+    NUMBER_3 = auto()
+    NUMBER_4 = auto()
+    NUMBER_5 = auto()
+    NUMBER_6 = auto()
+    NUMBER_7 = auto()
+    NUMBER_8 = auto()
 
     def __str__(self):
         return self.name
