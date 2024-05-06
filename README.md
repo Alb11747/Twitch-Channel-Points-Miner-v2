@@ -66,6 +66,7 @@ If you want to offer me a coffee, I would be grateful! ❤️
 
 |                                                                                                                                                                                                                                                                                                           |                                               |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|
+|<a href="https://bitcoin.org" target="_blank"><img src="https://dynamic-assets.coinbase.com/e785e0181f1a23a30d9476038d9be91e9f6c63959b538eabbc51a1abc8898940383291eede695c3b8dfaa1829a9b57f5a2d0a16b0523580346c6b8fab67af14b/asset_icons/b57ac673f06a4b0338a596817eb0a50ce16e2059f327dc117744449a47915cb2.png" alt="Donate BTC" height="16" width="16"></a>|`bc1qq49mvgda2zw4f9kta0a85xztwuxewqwac5eckd` _(<a href="https://bitcoin.org" target="_blank">BTC</a>)_|
 |<a href="https://dogechain.info" target="_blank"><img src="https://dynamic-assets.coinbase.com/3803f30367bb3972e192cd3fdd2230cd37e6d468eab12575a859229b20f12ff9c994d2c86ccd7bf9bc258e9bd5e46c5254283182f70caf4bd02cc4f8e3890d82/asset_icons/1597d628dd19b7885433a2ac2d7de6ad196c519aeab4bfe679706aacbf1df78a.png" alt="Donate DOGE" height="16" width="16"></a>|`DAKzncwKkpfPCm1xVU7u2pConpXwX7HS3D` _(<a href="https://dogechain.info" target="_blank">DOGE</a>)_|
 
 If you have any issues or you want to contribute, you are welcome! But please read the [CONTRIBUTING.md](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2/blob/master/CONTRIBUTING.md) file.
@@ -205,7 +206,7 @@ twitch_miner = TwitchChannelPointsMiner(
     priority=[                                  # Custom priority in this case for example:
         Priority.STREAK,                        # - We want first of all to catch all watch streak from all streamers
         Priority.DROPS,                         # - When we don't have anymore watch streak to catch, wait until all drops are collected over the streamers
-        Priority.ORDER                          # - When we have all of the drops claimed and no watch-streak available, use the order priority (POINTS_ASCENDING, POINTS_DESCEDING)
+        Priority.ORDER                          # - When we have all of the drops claimed and no watch-streak available, use the order priority (POINTS_ASCENDING, POINTS_DESCENDING)
     ],
     enable_analytics=False,			# Disables Analytics if False. Disabling it significantly reduces memory consumption
     disable_ssl_cert_verification=False,	# Set to True at your own risk and only to fix SSL: CERTIFICATE_VERIFY_FAILED error
@@ -421,14 +422,14 @@ Make sure to write the streamers array in order of priority from left to right. 
 
 ## Settings
 Most of the settings are self-explained and are commented on in the example.
-You can watch only two streamers per time. With `priority` settings, you can select which streamers watch by use priority. You can use an array of priority or single item. I suggest using at least one priority from `ORDER`, `POINTS_ASCENDING`, `POINTS_DESCEDING` because, for example, If you set only `STREAK` after catch all watch streak, the script will stop to watch streamers.
+You can watch only two streamers per time. With `priority` settings, you can select which streamers watch by use priority. You can use an array of priority or single item. I suggest using at least one priority from `ORDER`, `POINTS_ASCENDING`, `POINTS_DESCENDING` because, for example, If you set only `STREAK` after catch all watch streak, the script will stop to watch streamers.
 Available values are the following:
  - `STREAK` - Catch the watch streak from all streamers
  - `DROPS` - Claim all drops from streamers with drops tags enabled
  - `SUBSCRIBED` - Prioritize streamers you're subscribed to (higher subscription tiers are mined first)
  - `ORDER` - Following the order of the list
  - `POINTS_ASCENDING` - On top the streamers with the lowest points
- - `POINTS_DESCEDING` - On top the streamers with the highest points
+ - `POINTS_DESCENDING` - On top the streamers with the highest points
 
 You can combine all priority but keep in mind that use `ORDER` and `POINTS_ASCENDING` in the same settings doesn't make sense.
 
