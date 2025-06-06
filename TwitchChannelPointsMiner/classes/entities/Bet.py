@@ -1,6 +1,5 @@
 import copy
 import logging
-import math
 import re
 from enum import Enum, auto
 from typing import Any, Callable, Optional, Union
@@ -89,6 +88,7 @@ class BetEvent(object):
     __slots__ = [
         "title",
         "event_chances",
+        "confidence",
         "max_points",
         "strict",
         "filter",
@@ -100,6 +100,7 @@ class BetEvent(object):
         self,
         title: Union[str, re.Pattern[str], None],
         event_chances: Union[dict[str, float], list[tuple[Union[str, re.Pattern[str]], float]]],
+        confidence: float = 1.0,
         max_points: Optional[int] = None,
         strict: bool = True,
         filter: Optional[Callable[["BetEventData"], bool]] = None,
@@ -111,6 +112,7 @@ class BetEvent(object):
 
         :param title: Regex for the title of the bet event or None to match all events
         :param event_chances: Outcome labels and probabilities pairs. Can be a dict or a list of tuples.
+        :param confidence: Confidence level of the bet event, used to determine how much to bet on the event. [0.0, 1.0]
         :param max_points: Chance normalized maximum points to place on the bet
         :param strict: If true, outcome labels must match exactly. Otherwise the same outcome label can be used multiple times and not all outcomes must be present
         :param filter: Function to filter the bets before placing them. Return True if the bet should be placed, False otherwise
@@ -141,8 +143,12 @@ class BetEvent(object):
                     raise ValueError(f"Invalid regex for outcome: {outcome}") from e
             new_event_chances.append((outcome, chance))
 
+        if confidence < 0.0 or confidence > 1.0:
+            raise ValueError(f"Confidence must be between 0.0 and 1.0, got {confidence}")
+
         self.title = title
         self.event_chances = new_event_chances
+        self.confidence = confidence
         self.max_points = None if max_points is None else int(max_points)
         self.strict = strict
         self.filter = filter
@@ -272,7 +278,9 @@ class Bet(object):
         self.__clear_outcomes()
 
     def __repr__(self):
-        outcome_str = "".join(f"\n\t\tOutcome {chr(ord('A') + i)}({self.get_outcome(i)})" for i in range(len(self.outcomes)))
+        outcome_str = "".join(
+            f"\n\t\tOutcome {chr(ord('A') + i)}({self.get_outcome(i)})" for i in range(len(self.outcomes))
+        )
         return f"Bet(total_users={millify(self.total_users)}, total_points={millify(self.total_points)}), decision={self.decision}){outcome_str}"
 
     def get_decision(self, parsed=False):
@@ -321,7 +329,11 @@ class Bet(object):
             condition = self.settings.filter_condition.where
             value = self.settings.filter_condition.value
 
-            fixed_key = key if key not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS] else key.replace("decision", "total")
+            fixed_key = (
+                key
+                if key not in [OutcomeKeys.DECISION_USERS, OutcomeKeys.DECISION_POINTS]
+                else key.replace("decision", "total")
+            )
             if key in [OutcomeKeys.TOTAL_USERS, OutcomeKeys.TOTAL_POINTS]:
                 compared_value = sum(outcome[fixed_key] for outcome in self.outcomes)
             else:
@@ -409,17 +421,114 @@ class Bet(object):
     def smart_strategy(self, balance: int) -> None:
         for i in range(len(self.outcomes)):
             for j in range(i + 1, len(self.outcomes)):
-                difference = abs(self.outcomes[i][OutcomeKeys.PERCENTAGE_USERS] - self.outcomes[j][OutcomeKeys.PERCENTAGE_USERS])
+                difference = abs(
+                    self.outcomes[i][OutcomeKeys.PERCENTAGE_USERS] - self.outcomes[j][OutcomeKeys.PERCENTAGE_USERS]
+                )
                 if difference > self.settings.percentage_gap:
                     self.decision["choice"] = self.__return_choice(OutcomeKeys.PERCENTAGE_USERS)
                     return
         self.odds_strategy(balance)
 
     def event_strategy(self, balance: int, event: BetEvent) -> bool:
+        """
+        Kelly Criterion betting strategy that calculates optimal bet amounts for long-term growth.
+
+        This method implements the Kelly Criterion, a mathematically proven formula for optimal
+        betting that maximizes logarithmic utility (long-term growth rate). It solves the
+        circular dependency where placing a bet changes the odds, but Kelly requires final odds.
+
+        Mathematical Foundation:
+        ----------------------
+        Standard Kelly Criterion: f* = (bp - q) / b
+        Where:
+        - f* = fraction of capital to wager
+        - b = odds received on the wager (decimal odds - 1)
+        - p = probability of winning
+        - q = probability of losing (1 - p)
+
+        For our betting context: f* = (odds * probability - 1) / (odds - 1)
+
+        Circular Dependency Problem:
+        ---------------------------
+        The challenge: Our bet amount changes the final odds, but Kelly needs those final odds
+        to calculate the optimal bet amount. This creates a circular dependency:
+        - Need bet_amount to calculate final_odds = (total + bet_amount) / (outcome + bet_amount)
+        - Need final_odds to calculate Kelly fraction
+        - Need Kelly fraction to calculate bet_amount
+
+        Mathematical Solution:
+        ---------------------
+        We solve this by deriving a direct formula that accounts for the odds impact:
+
+        Starting with Kelly: f* = (odds * p - 1) / (odds - 1)
+        Where odds = (total + x) / (outcome + x) and x = balance * f*
+
+        Algebraic manipulation yields:
+        x = balance * (total * p - outcome) / ((total - outcome) - balance * (p - 1))
+
+        This formula directly calculates the Kelly-optimal bet amount while accounting
+        for how that bet will change the final odds, eliminating the circular dependency.
+
+        Variable Definitions:
+        -------------------
+        - total: Total points in the betting pool
+        - outcome: Points currently on the outcome we're considering
+        - p: Probability of this outcome winning
+        - balance: Available capital to bet with
+        - x: Optimal bet amount (Kelly-optimal)
+
+        Example Calculation:
+        ------------------
+        Given: balance=100k, probability=60%, total=500k, outcome=200k
+        - p = 0.6
+        - numerator = 100k * (500k * 0.6 - 200k) = 100k * 100k = 10B
+        - denominator = (500k - 200k) - 100k * (0.6 - 1) = 300k + 40k = 340k
+        - x = 10B / 340k ≈ 29,412 points
+
+        Risk Management Features:
+        ------------------------
+        1. Kelly Criterion: Mathematically optimal for long-term growth
+           - Prevents overbetting by optimizing log utility
+           - Automatically scales bet size based on edge and odds
+
+        2. Conservative Scaling: Uses event_percentage as a fraction of Kelly
+           - Acts as a "fractional Kelly" for more conservative betting
+           - Reduces variance while maintaining positive expected growth
+
+        3. Platform Constraints: Respects Twitch's 250,000 point maximum bet limit
+
+        4. Balance Protection: Never bets more than the available balance
+
+        5. Edge Detection: Only bets when there's positive expected value
+
+        Advantages of the Strategy:
+        --------------------------
+        - Mathematically optimal: Kelly Criterion is proven for long-term growth
+        - Self-correcting: Automatically adjusts for market impact of the bet
+        - Risk-proportional: Bet size scales with edge strength and bankroll
+        - Conservative: Fractional Kelly implementation reduces variance
+        - Robust: Handles edge cases and prevents negative expected value bets
+
+        Args:
+            balance: User's current channel point balance
+            event: BetEvent containing outcome patterns and expected probabilities
+
+        Returns:
+            bool: True if a profitable bet was calculated and decision was set, False otherwise
+
+        Note:
+            This method modifies self.decision with the calculated Kelly-optimal bet choice and amount.
+            The algorithm will skip outcomes where there is no positive expected value.
+        """
+
         if self.settings.event_percentage is None:
             return False
 
         failed_logger_extra = {"color": Settings.logger.color_palette.get(Events.BET_FAILED)}
+
+        if self.total_points <= 0:
+            logger.error("Total points in betting pool is zero, cannot calculate bet", failed_logger_extra)
+            return False
 
         # Print identifiable event name
         bet_info = "(Unknown Bet)"
@@ -430,10 +539,15 @@ class Bet(object):
         elif event.filter is not None and getattr(event.filter, "__name__", None) not in ["<lambda>", None]:
             bet_info = f"(Filter: {event.filter.__name__})"
 
+        # Validate that outcome counts match in strict mode
         if event.strict and len(self.outcomes) != len(event.event_chances):
-            logger.info(f"Event outcomes counts don't match {bet_info}: {len(self.outcomes)=} != {len(event.event_chances)=}", failed_logger_extra)
+            logger.info(
+                f"Event outcomes counts don't match {bet_info}: {len(self.outcomes)=} != {len(event.event_chances)=}",
+                failed_logger_extra,
+            )
             return False
 
+        # Match bet outcomes with event probability patterns
         total_chance = 0
         outcome_chances = [0.0] * len(self.outcomes)
         available_event_titles = [outcome for outcome, chance in event.event_chances]
@@ -451,37 +565,85 @@ class Bet(object):
                 logger.info(f"Event outcome not found {bet_info}: {decision_outcome['title']}", failed_logger_extra)
                 return False
 
+        # In strict mode, ensure all event outcomes were matched
         if event.strict and len(available_event_titles) > 0:
             outcomes_left = ", ".join(f"'{outcome.pattern}'" for outcome in available_event_titles)
             logger.info(f"Event outcomes left after matching {bet_info}: {outcomes_left}", failed_logger_extra)
             return False
 
-        # Normalize chances
+        # Normalize probabilities to sum to 1.0
         for i in range(len(outcome_chances)):
-            outcome_chances[i] /= total_chance
-
+            outcome_chances[i] /= total_chance  # Find the most profitable betting opportunity using Kelly Criterion
         decision: Optional[int] = None
         decision_bet_amount = 0
         decision_odds_after_bet = 0
         decision_expected_value = 0
 
         for i, outcome in enumerate(self.outcomes):
-            if outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points >= outcome_chances[i]:
+            # Skip outcomes where current odds are already worse than expected (no positive edge)
+            current_implied_probability = outcome[OutcomeKeys.TOTAL_POINTS] / self.total_points
+            if current_implied_probability >= outcome_chances[i]:
                 continue
 
-            # Calculate bet amount
-            t, o, c = (self.total_points, outcome[OutcomeKeys.TOTAL_POINTS], 1 / outcome_chances[i])
+            # Kelly Criterion variables
+            total = self.total_points  # Total points in betting pool
+            outcome_points = outcome[OutcomeKeys.TOTAL_POINTS]  # Points on this outcome
+            probability = outcome_chances[i]  # True probability of this outcome winning
 
-            # Account for Bet amount and scale based on difference of actual chance and bet reward
-            p = min(balance, 1e6) * (self.settings.event_percentage / 100) * (outcome_chances[i] ** 2)
-            bet_amount = (math.sqrt((c * p + o - p) ** 2 - 4 * (c * o * p - p * t)) - c * p - o + p) / 2
+            effective_balance = balance * (self.settings.event_percentage / 100)  # Effective balance for betting
+            if effective_balance <= 0:
+                continue  # Skip if no effective balance to bet
 
-            # Limit bet amount to bet with max expected value and twitch limit
-            bet_amount = min(bet_amount, math.sqrt(-(c - 1) * o * (o - t)) / (c - 1) - o, 250000)
+            current_odds = total / outcome_points if outcome_points > 0 else float("inf")
+            if current_odds <= 1:
+                continue
 
-            odds_after_bet = (self.total_points + bet_amount) / (outcome[OutcomeKeys.TOTAL_POINTS] + bet_amount)
-            expected_value = odds_after_bet * bet_amount * outcome_chances[i] - bet_amount
+            # Solve the circular dependency directly using the Kelly Criterion
+            # Standard Kelly: f* = (odds * p - 1) / (odds - 1)
+            # But since our bet changes the odds, we solve for x where:
+            # x = balance * f* and final_odds = (total + x) / (outcome + x)
+            #
+            # Mathematical derivation yields:
+            # x = balance * (total * p - outcome) / ((total - outcome) - balance * (p - 1))
 
+            numerator = effective_balance * (total * probability - outcome_points)
+            denominator = (total - outcome_points) - effective_balance * (probability - 1)
+
+            # Check for mathematical validity
+            if denominator <= 0:
+                # This occurs when the bet would be too large relative to the pool
+                # or when the probability is too close to 1.0
+                continue
+
+            # Calculate the Kelly-optimal bet amount that accounts for odds impact
+            bet_amount = numerator / denominator
+
+            # Verify the bet amount is positive (negative indicates no edge)
+            if bet_amount <= 0:
+                continue
+
+            # Apply conservative scaling (fractional Kelly) to reduce variance
+            bet_amount *= event.confidence
+
+            # Apply safety constraints
+            if bet_amount <= 0:
+                continue
+
+            # Limit to Twitch platform maximum
+            bet_amount = min(bet_amount, 250000)
+
+            # Ensure we don't bet more than the event's maximum points if specified
+            if event.max_points is not None:
+                bet_amount = min(bet_amount, event.max_points)
+
+            # Ensure we don't bet more than the effective balance
+            bet_amount = min(bet_amount, effective_balance)
+
+            # Calculate expected value of this Kelly-optimal bet
+            odds_after_bet = (total + bet_amount) / (outcome_points + bet_amount)
+            expected_value = odds_after_bet * bet_amount * probability - bet_amount
+
+            # Track the best opportunity
             if expected_value > decision_expected_value:
                 decision = i
                 decision_bet_amount = bet_amount
@@ -492,11 +654,9 @@ class Bet(object):
             logger.error(f"No profitable outcome found {bet_info}", failed_logger_extra)
             return True
 
+        # Apply final constraints to the chosen bet
         self.decision["choice"] = decision
         self.decision["amount"] = decision_bet_amount
-        if event.max_points is not None:
-            self.decision["amount"] = min(self.decision["amount"], event.max_points * outcome_chances[decision])
-        self.decision["amount"] = min(self.decision["amount"], balance * outcome_chances[decision])
 
         # Logging error if a single '%' is used rather than double '%%'
         logger.info(
