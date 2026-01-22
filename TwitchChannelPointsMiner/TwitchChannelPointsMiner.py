@@ -408,9 +408,18 @@ class TwitchChannelPointsMiner:
                     refresh_context = time.time()
                     for index in range(len(self.streamers)):
                         if self.streamers[index].is_online:
-                            self.twitch.load_channel_points_context(
-                                self.streamers[index]
-                            )
+                            try:
+                                self.twitch.load_channel_points_context(
+                                    self.streamers[index]
+                                )
+                            except StreamerDoesNotExistException:
+                                logger.info(
+                                    f"Streamer {self.streamers[index].username} does not exist",
+                                    extra={"emoji": ":cry:"},
+                                )
+                                # Mark offline to avoid repeated failing refreshes
+                                self.streamers[index].is_online = False
+                                self.streamers[index].offline_at = time.time()
 
     def end(self, signum, frame):
         if not self.running:
